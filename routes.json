@@ -1,0 +1,22 @@
+{
+  "routes": [
+    {
+      "prefix": "/oa",
+      "target_host": "127.0.0.1",
+      "target_port": 6001,
+      "strip_prefix": true
+    },
+    {
+      "prefix": "/crm",
+      "target_host": "127.0.0.1",
+      "target_port": 6002,
+      "strip_prefix": true
+    },
+    {
+      "prefix": "/docs",
+      "target_host": "127.0.0.1",
+      "target_port": 6003,
+      "strip_prefix": true
+    }
+  ]
+}

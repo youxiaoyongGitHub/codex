@@ -1,0 +1,19 @@
+serverAddr = "127.0.0.1"
+serverPort = 17000
+
+auth.method = "token"
+auth.token = "e2e-test-token"
+
+[[proxies]]
+name = "e2e-client-b-crm"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 18082
+remotePort = 16002
+
+[[proxies]]
+name = "e2e-client-b-docs"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 18083
+remotePort = 16003

@@ -1,0 +1,4 @@
+bindPort = 17000
+
+auth.method = "token"
+auth.token = "e2e-test-token"

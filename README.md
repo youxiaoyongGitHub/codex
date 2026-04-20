@@ -25,12 +25,19 @@ http://your-domain/docs/... -> Nginx -> 127.0.0.1:6003 -> client-b Docs
 
 ## 文件说明
 
-- `nginx.conf`: Nginx 路径前缀反向代理配置
+- `nginx.conf`: 主 Nginx 路径前缀反向代理配置
+- `nginx-proxy-common.inc`: Nginx 公共代理头配置片段
 - `frps.toml`: FRP 服务端示例配置
 - `frpc-client-a.toml`: 客户端 A 示例
 - `frpc-client-b.toml`: 客户端 B 示例
-- `proxy_server.py`: 旧的 Python 方案参考，可忽略
-- `routes.json`: 旧的 Python 方案路由参考，可忽略
+- `TESTING.md`: 完整联调测试文档
+- `e2e-frps.toml`: 本地联调用 FRP 服务端配置
+- `e2e-frpc-a.toml`: 本地联调内网 A 配置
+- `e2e-frpc-b.toml`: 本地联调内网 B 配置
+- `e2e-nginx.conf`: 本地联调用 Nginx 配置
+- `e2e_test_service.py`: 本地联调测试服务
+- `proxy_server.py`: 早期 Python 反向代理原型，保留作参考
+- `routes.json`: Python 原型的示例路由配置
 
 ## 快速开始
 
@@ -107,6 +114,7 @@ location /oa/ {
 - `sub_filter` 修复 HTML/CSS/JS/JSON 中常见的绝对路径
 - `X-Forwarded-Prefix` 透传给上游服务，方便支持前缀部署的应用自行识别
 - `Accept-Encoding` 置空，避免上游压缩响应后导致 `sub_filter` 无法生效
+- 额外覆盖 `"/api"`、`'/api'` 这类 JS/JSON 字符串形式的根路径
 
 注意：
 
@@ -125,3 +133,7 @@ Nginx 使用事件驱动模型处理高并发连接，适合做统一入口网�
 - `frps.toml` 与所有 `frpc` 使用同一个强 `token`
 - 防火墙只开放 80/443 和必要的 `frps` 端口
 - 新增更多内网服务时，继续新增 `frpc` 远端端口和对应 `location` 即可
+
+## 测试文档
+
+完整的本地联调步骤、测试目的和验证结果见 [TESTING.md](/home/youxy/codex/code/TESTING.md:1)。
