@@ -1,0 +1,12 @@
+serverAddr = "YOUR_PUBLIC_SERVER_IP"
+serverPort = 7000
+
+auth.method = "token"
+auth.token = "replace-with-strong-token"
+
+[[proxies]]
+name = "client-a-oa"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 8080
+remotePort = 6001
