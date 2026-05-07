@@ -1,0 +1,14 @@
+{
+  "name": "asa-server-manager",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "方舟生存飞升私服开服器，使用 JSON 存储并提供中文 Web 管理页面。",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

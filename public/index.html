@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>方舟生存飞升开服器</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ARK: Survival Ascended</p>
+        <h1>方舟生存飞升私服开服器</h1>
+      </div>
+      <div class="top-actions">
+        <button id="refreshBtn">刷新状态</button>
+        <button id="createBtn" class="primary">新建实例</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>全局设置</h2>
+          <label>
+            <span>SteamCMD 路径</span>
+            <input id="steamcmdPath" placeholder="例如 C:\\steamcmd\\steamcmd.exe" />
+          </label>
+          <label>
+            <span>默认安装根目录</span>
+            <input id="defaultInstallRoot" placeholder="例如 D:\\ArkServers" />
+          </label>
+          <label>
+            <span>Web 端口</span>
+            <input id="webPort" type="number" min="1" max="65535" />
+          </label>
+          <button id="saveSettingsBtn">保存全局设置</button>
+        </section>
+
+        <section class="panel">
+          <h2>私服实例</h2>
+          <div id="instanceList" class="instance-list"></div>
+        </section>
+      </aside>
+
+      <section class="content">
+        <div id="emptyState" class="empty">
+          <h2>选择或创建一个私服实例</h2>
+          <p>可以在这里管理安装、Mod、启动参数和中文 INI 配置。</p>
+        </div>
+
+        <div id="detailView" class="hidden">
+          <section class="hero">
+            <div>
+              <p id="instanceStatus" class="status">已停止</p>
+              <h2 id="instanceTitle">实例名称</h2>
+              <p id="instancePath" class="muted"></p>
+            </div>
+            <div class="hero-actions">
+              <button id="installBtn">安装/更新</button>
+              <button id="startBtn" class="primary">启动</button>
+              <button id="stopBtn">停止</button>
+              <button id="restartBtn">重启</button>
+            </div>
+          </section>
+
+          <nav class="tabs">
+            <button data-tab="basic" class="active">基础配置</button>
+            <button data-tab="ini">中文 INI 配置</button>
+            <button data-tab="raw">原始 INI</button>
+            <button data-tab="logs">运行日志</button>
+          </nav>
+
+          <section id="tab-basic" class="tab-panel">
+            <div class="grid two">
+              <label>
+                <span>实例名称</span>
+                <input id="nameInput" />
+              </label>
+              <label>
+                <span>地图名称</span>
+                <input id="mapInput" placeholder="TheIsland_WP" />
+              </label>
+              <label>
+                <span>安装目录</span>
+                <input id="installDirInput" />
+              </label>
+              <label>
+                <span>游戏端口</span>
+                <input id="gamePortInput" type="number" />
+              </label>
+              <label>
+                <span>查询端口</span>
+                <input id="queryPortInput" type="number" />
+              </label>
+              <label>
+                <span>RCON 端口</span>
+                <input id="rconPortInput" type="number" />
+              </label>
+            </div>
+            <label>
+              <span>Mod ID 列表</span>
+              <textarea id="modsInput" rows="3" placeholder="每行一个 Mod ID，或使用逗号分隔"></textarea>
+            </label>
+            <label>
+              <span>额外启动参数</span>
+              <textarea id="extraArgsInput" rows="3" placeholder="例如 -NoTransferFromFiltering"></textarea>
+            </label>
+            <div class="button-row">
+              <button id="saveInstanceBtn" class="primary">保存基础配置</button>
+            </div>
+          </section>
+
+          <section id="tab-ini" class="tab-panel hidden">
+            <div class="toolbar">
+              <input id="configSearch" placeholder="搜索中文名称、说明或原始 key" />
+              <button id="resetDefaultsBtn">恢复默认</button>
+              <button id="saveConfigBtn" class="primary">仅保存</button>
+              <button id="saveSyncConfigBtn">保存并同步 INI</button>
+              <button id="saveRestartBtn">保存并重启</button>
+            </div>
+            <div id="configGroups"></div>
+            <section class="panel custom-config">
+              <h3>自定义配置项</h3>
+              <div id="customList"></div>
+              <button id="addCustomBtn">添加自定义配置项</button>
+            </section>
+          </section>
+
+          <section id="tab-raw" class="tab-panel hidden">
+            <div class="toolbar">
+              <select id="rawFileSelect">
+                <option>GameUserSettings.ini</option>
+                <option>Game.ini</option>
+              </select>
+              <button id="loadRawBtn">导入 INI</button>
+              <button id="saveRawBtn" class="primary">导出 INI</button>
+            </div>
+            <textarea id="rawIniText" rows="22" spellcheck="false"></textarea>
+          </section>
+
+          <section id="tab-logs" class="tab-panel hidden">
+            <div class="toolbar">
+              <button id="loadLogsBtn">刷新日志</button>
+            </div>
+            <pre id="logsBox"></pre>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
