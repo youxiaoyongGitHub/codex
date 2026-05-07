@@ -68,6 +68,10 @@ select {
   color: var(--ink);
 }
 
+input[type="checkbox"] {
+  width: auto;
+}
+
 textarea {
   resize: vertical;
 }
@@ -336,6 +340,53 @@ h3 {
   color: #fff;
   border-radius: 8px;
   box-shadow: var(--shadow);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(16, 24, 23, 0.45);
+}
+
+.modal {
+  width: min(520px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+
+.modal h2 {
+  margin-bottom: 12px;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.check-row span {
+  margin: 0;
+  color: var(--ink);
+}
+
+.warning {
+  border-left: 4px solid var(--danger);
+  background: #fff5f5;
+  color: var(--danger);
+  margin: 0 0 18px;
+  padding: 10px 12px;
+  line-height: 1.55;
+}
+
+.modal-actions {
+  justify-content: flex-end;
 }
 
 .hidden {

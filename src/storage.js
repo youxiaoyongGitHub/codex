@@ -125,8 +125,23 @@ export async function saveInstance(instance) {
   return next;
 }
 
-export async function deleteInstance(instanceId) {
+export async function deleteInstance(instanceId, options = {}) {
+  const deleted = { record: instanceFile(instanceId), runtime: false, dataDir: null };
   await fs.rm(instanceFile(instanceId), { force: true });
+
+  const runtime = await readRuntime();
+  if (runtime.instances?.[instanceId]) {
+    delete runtime.instances[instanceId];
+    deleted.runtime = true;
+    await saveRuntime(runtime);
+  }
+
+  if (options.deleteData && options.installDir) {
+    await fs.rm(options.installDir, { recursive: true, force: true });
+    deleted.dataDir = options.installDir;
+  }
+
+  return deleted;
 }
 
 export function resolveInstallDir(appSettings, instance) {

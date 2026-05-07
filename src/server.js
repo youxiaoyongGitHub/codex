@@ -144,8 +144,13 @@ async function apiHandler(req, res, pathname) {
     return sendJson(res, 200, await saveInstance(next));
   }
   if (req.method === "DELETE" && suffix === "") {
-    await deleteInstance(instance.id);
-    return sendJson(res, 200, { ok: true });
+    const url = new URL(req.url, `http://${req.headers.host || "127.0.0.1"}`);
+    const deleteData = url.searchParams.get("deleteData") === "true";
+    const deleted = await deleteInstance(instance.id, {
+      deleteData,
+      installDir: resolveInstallDir(appSettings, instance),
+    });
+    return sendJson(res, 200, { ok: true, deleted });
   }
   if (req.method === "GET" && suffix === "/config") {
     return sendJson(res, 200, {

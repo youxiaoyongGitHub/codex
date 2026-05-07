@@ -334,13 +334,20 @@ $("stopBtn").onclick = () => runAction("stop", "服务器已停止").catch((erro
 $("restartBtn").onclick = () => runAction("restart", "服务器已重启").catch((error) => toast(error.message));
 $("deleteInstanceBtn").onclick = async () => {
   if (!state.current) return;
-  const confirmed = window.confirm(`确定删除实例“${state.current.name}”吗？这只会删除面板中的实例记录，不会删除服务器安装目录。`);
-  if (!confirmed) return;
-  await api(`/api/instances/${encodeURIComponent(state.current.id)}`, { method: "DELETE" });
+  $("deleteDialogText").textContent = `确定删除实例“${state.current.name}”吗？默认只删除面板实例记录。`;
+  $("deleteDataCheck").checked = false;
+  $("deleteDialog").classList.remove("hidden");
+};
+$("cancelDeleteBtn").onclick = () => $("deleteDialog").classList.add("hidden");
+$("confirmDeleteBtn").onclick = async () => {
+  if (!state.current) return;
+  const deleteData = $("deleteDataCheck").checked;
+  await api(`/api/instances/${encodeURIComponent(state.current.id)}?deleteData=${deleteData ? "true" : "false"}`, { method: "DELETE" });
+  $("deleteDialog").classList.add("hidden");
   state.current = null;
   $("detailView").classList.add("hidden");
   $("emptyState").classList.remove("hidden");
-  toast("实例已删除");
+  toast(deleteData ? "实例及实例数据目录已删除" : "实例记录已删除");
   await loadAll();
 };
 $("loadRawBtn").onclick = async () => {

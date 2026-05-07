@@ -153,6 +153,22 @@
       </section>
     </main>
 
+    <div id="deleteDialog" class="modal-backdrop hidden">
+      <div class="modal">
+        <h2>删除实例</h2>
+        <p id="deleteDialogText" class="muted"></p>
+        <label class="check-row">
+          <input id="deleteDataCheck" type="checkbox" />
+          <span>同时删除实例数据目录</span>
+        </label>
+        <p class="warning">勾选后会删除该实例的服务器安装目录、配置、日志和已下载的服务端文件。此操作不可恢复。</p>
+        <div class="button-row modal-actions">
+          <button id="cancelDeleteBtn">取消</button>
+          <button id="confirmDeleteBtn" class="danger">确认删除</button>
+        </div>
+      </div>
+    </div>
+
     <div id="toast" class="toast hidden"></div>
     <script src="/app.js" type="module"></script>
   </body>
