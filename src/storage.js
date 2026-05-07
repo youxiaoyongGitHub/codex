@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { defaultMapId } from "./maps.js";
 
 export const ROOT_DIR = path.resolve(process.cwd());
 export const DATA_DIR = path.join(ROOT_DIR, "data");
@@ -85,7 +86,7 @@ export function defaultInstance(name = "新建方舟私服") {
   return {
     id,
     name,
-    map: "TheIsland_WP",
+    map: defaultMapId(),
     installDir: "",
     ports: {
       game: 7777,

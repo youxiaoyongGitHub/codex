@@ -16,6 +16,7 @@ import {
 } from "./storage.js";
 import { CONFIG_CATEGORIES, CONFIG_SCHEMA, validateSchema } from "./config-schema.js";
 import { configPath, readRawIni, syncIniFiles } from "./ini.js";
+import { ASA_MAPS } from "./maps.js";
 import {
   installOrUpdateInstance,
   refreshRuntimeStates,
@@ -112,6 +113,9 @@ async function apiHandler(req, res, pathname) {
       schema: CONFIG_SCHEMA,
       validationErrors: validateSchema(),
     });
+  }
+  if (route(req.method, pathname, { method: "GET", regex: /^\/api\/maps$/ })) {
+    return sendJson(res, 200, { maps: ASA_MAPS });
   }
   if (route(req.method, pathname, { method: "GET", regex: /^\/api\/instances$/ })) {
     const runtime = await refreshRuntimeStates();

@@ -4,6 +4,7 @@ const state = {
   current: null,
   schema: [],
   categories: [],
+  maps: [],
   configValues: {},
   customConfigs: [],
 };
@@ -31,15 +32,17 @@ function toast(message) {
 }
 
 async function loadAll() {
-  const [settings, instances, schemaData] = await Promise.all([
+  const [settings, instances, schemaData, mapsData] = await Promise.all([
     api("/api/settings"),
     api("/api/instances"),
     api("/api/config-schema"),
+    api("/api/maps"),
   ]);
   state.settings = settings;
   state.instances = instances;
   state.schema = schemaData.schema;
   state.categories = schemaData.categories;
+  state.maps = mapsData.maps;
   renderSettings();
   renderInstances();
   if (state.current) {
@@ -92,13 +95,24 @@ function renderDetail() {
   $("instanceStatus").textContent = instance.runtime?.status || "已停止";
   $("instancePath").textContent = instance.resolvedInstallDir || "";
   $("nameInput").value = instance.name || "";
-  $("mapInput").value = instance.map || "";
+  renderMapOptions(instance.map || "");
   $("installDirInput").value = instance.installDir || instance.resolvedInstallDir || "";
   $("gamePortInput").value = instance.ports?.game || 7777;
   $("queryPortInput").value = instance.ports?.query || 27015;
   $("rconPortInput").value = instance.ports?.rcon || 27020;
   $("modsInput").value = (instance.mods || []).join("\n");
   $("extraArgsInput").value = instance.launch?.extraArgs || "";
+}
+
+function renderMapOptions(mapId) {
+  const select = $("mapSelect");
+  const known = state.maps.some((map) => map.id === mapId);
+  select.innerHTML = state.maps.map((map) => (
+    `<option value="${escapeAttr(map.id)}">${escapeHtml(map.displayNameZh)}（${escapeHtml(map.englishName)} · ${escapeHtml(map.typeZh)}）</option>`
+  )).join("") + '<option value="__custom__">自定义地图启动名</option>';
+  select.value = known ? mapId : "__custom__";
+  $("customMapLabel").classList.toggle("hidden", known);
+  $("customMapInput").value = known ? "" : mapId;
 }
 
 function renderConfig() {
@@ -208,7 +222,7 @@ function renderCustomConfigs() {
 function collectInstanceForm() {
   return {
     name: $("nameInput").value.trim(),
-    map: $("mapInput").value.trim(),
+    map: $("mapSelect").value === "__custom__" ? $("customMapInput").value.trim() : $("mapSelect").value,
     installDir: $("installDirInput").value.trim(),
     ports: {
       game: Number($("gamePortInput").value),
@@ -290,6 +304,12 @@ $("createBtn").onclick = async () => {
   });
   await loadAll();
   await selectInstance(instance.id);
+};
+
+$("mapSelect").onchange = () => {
+  const custom = $("mapSelect").value === "__custom__";
+  $("customMapLabel").classList.toggle("hidden", !custom);
+  if (custom && !$("customMapInput").value.trim()) $("customMapInput").focus();
 };
 $("saveSettingsBtn").onclick = async () => {
   state.settings = await api("/api/settings", {

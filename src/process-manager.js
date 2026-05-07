@@ -4,6 +4,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { readRuntime, saveRuntime } from "./storage.js";
 import { syncIniFiles } from "./ini.js";
+import { defaultMapId } from "./maps.js";
 
 export function isProcessAlive(pid) {
   if (!pid) return false;
@@ -17,7 +18,7 @@ export function isProcessAlive(pid) {
 
 export function buildLaunchArgs(instance) {
   const config = instance.config || {};
-  const map = instance.map || "TheIsland_WP";
+  const map = instance.map || defaultMapId();
   const query = [
     `listen`,
     `SessionName=${encodeURIComponent(config.SessionName || instance.name || "方舟飞升私服")}`,
