@@ -105,6 +105,10 @@
                 <input id="gamePortInput" type="number" />
               </label>
               <label>
+                <span>对等端口</span>
+                <input id="peerPortInput" type="number" />
+              </label>
+              <label>
                 <span>查询端口</span>
                 <input id="queryPortInput" type="number" />
               </label>
@@ -123,7 +127,10 @@
             </label>
             <div class="button-row">
               <button id="saveInstanceBtn" class="primary">保存基础配置</button>
+              <button id="firewallBtn">创建防火墙规则</button>
+              <button id="checkPortsBtn">检测端口监听</button>
             </div>
+            <pre id="portStatusBox" class="small-log"></pre>
           </section>
 
           <section id="tab-ini" class="tab-panel hidden">

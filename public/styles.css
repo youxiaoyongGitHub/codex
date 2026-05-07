@@ -315,7 +315,8 @@ h3 {
 }
 
 #logsBox,
-#rawIniText {
+#rawIniText,
+.small-log {
   width: 100%;
   background: #101817;
   color: #dce8e4;
@@ -327,6 +328,12 @@ h3 {
   min-height: 430px;
   padding: 14px;
   overflow: auto;
+  white-space: pre-wrap;
+}
+
+.small-log {
+  min-height: 96px;
+  padding: 12px;
   white-space: pre-wrap;
 }
 

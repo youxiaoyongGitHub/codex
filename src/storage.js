@@ -100,6 +100,7 @@ export function defaultInstance(name = "新建方舟私服") {
     installDir: "",
     ports: {
       game: 7777,
+      peer: 7778,
       query: 27015,
       rcon: 27020,
     },

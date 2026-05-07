@@ -17,6 +17,7 @@ import {
 import { CONFIG_CATEGORIES, CONFIG_SCHEMA, validateSchema } from "./config-schema.js";
 import { configPath, readRawIni, syncIniFiles } from "./ini.js";
 import { ASA_MAPS } from "./maps.js";
+import { ensureFirewallRules, getPortStatus, requiredPorts } from "./network.js";
 import {
   installOrUpdateInstance,
   refreshRuntimeStates,
@@ -63,14 +64,17 @@ function route(method, pathname, pattern) {
 function validateInstance(instance, allInstances, appSettings) {
   if (!instance.name?.trim()) throw Object.assign(new Error("实例名称不能为空"), { statusCode: 400 });
   if (!instance.map?.trim()) throw Object.assign(new Error("地图名称不能为空"), { statusCode: 400 });
-  const ports = [instance.ports?.game, instance.ports?.query, instance.ports?.rcon].map(Number);
+  const ports = Object.values(requiredPorts(instance));
   if (ports.some((port) => !Number.isInteger(port) || port < 1 || port > 65535)) {
     throw Object.assign(new Error("端口必须在 1 到 65535 之间"), { statusCode: 400 });
+  }
+  if (new Set(ports).size !== ports.length) {
+    throw Object.assign(new Error("同一实例内端口不能重复"), { statusCode: 400 });
   }
   const ownDir = resolveInstallDir(appSettings, instance);
   for (const other of allInstances) {
     if (other.id === instance.id) continue;
-    const otherPorts = [other.ports?.game, other.ports?.query, other.ports?.rcon].map(Number);
+    const otherPorts = Object.values(requiredPorts(other));
     if (ports.some((port) => otherPorts.includes(port))) {
       throw Object.assign(new Error(`端口与实例“${other.name}”冲突`), { statusCode: 400 });
     }
@@ -78,6 +82,22 @@ function validateInstance(instance, allInstances, appSettings) {
       throw Object.assign(new Error(`安装目录与实例“${other.name}”冲突`), { statusCode: 400 });
     }
   }
+}
+
+function sanitizeInstanceInput(input) {
+  return {
+    id: input.id,
+    name: input.name,
+    map: input.map,
+    installDir: input.installDir,
+    ports: input.ports,
+    mods: Array.isArray(input.mods) ? input.mods : [],
+    launch: input.launch,
+    config: input.config || {},
+    customConfigs: Array.isArray(input.customConfigs) ? input.customConfigs : [],
+    createdAt: input.createdAt,
+    updatedAt: input.updatedAt,
+  };
 }
 
 async function apiHandler(req, res, pathname) {
@@ -128,7 +148,7 @@ async function apiHandler(req, res, pathname) {
   }
   if (route(req.method, pathname, { method: "POST", regex: /^\/api\/instances$/ })) {
     const body = await readBody(req);
-    const instance = { ...defaultInstance(body.name || "新建方舟私服"), ...body };
+    const instance = sanitizeInstanceInput({ ...defaultInstance(body.name || "新建方舟私服"), ...body });
     instance.installDir = instance.installDir || resolveInstallDir(appSettings, instance);
     validateInstance(instance, await listInstances(), appSettings);
     return sendJson(res, 201, await saveInstance(instance));
@@ -153,7 +173,7 @@ async function apiHandler(req, res, pathname) {
   }
   if (req.method === "PUT" && suffix === "") {
     const body = await readBody(req);
-    const next = { ...instance, ...body, id: instance.id, createdAt: instance.createdAt };
+    const next = sanitizeInstanceInput({ ...instance, ...body, id: instance.id, createdAt: instance.createdAt });
     validateInstance(next, await listInstances(), appSettings);
     return sendJson(res, 200, await saveInstance(next));
   }
@@ -204,6 +224,12 @@ async function apiHandler(req, res, pathname) {
     await stopInstance(instance.id);
     const state = await startInstance(instance, resolveInstallDir(appSettings, instance));
     return sendJson(res, 200, state);
+  }
+  if (req.method === "GET" && suffix === "/ports") {
+    return sendJson(res, 200, await getPortStatus(instance));
+  }
+  if (req.method === "POST" && suffix === "/firewall") {
+    return sendJson(res, 200, await ensureFirewallRules(instance));
   }
   if (req.method === "GET" && suffix === "/logs") {
     const runtime = await readRuntime();

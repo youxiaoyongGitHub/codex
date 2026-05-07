@@ -98,6 +98,7 @@ function renderDetail() {
   renderMapOptions(instance.map || "");
   $("installDirInput").value = instance.installDir || instance.resolvedInstallDir || "";
   $("gamePortInput").value = instance.ports?.game || 7777;
+  $("peerPortInput").value = instance.ports?.peer || Number(instance.ports?.game || 7777) + 1;
   $("queryPortInput").value = instance.ports?.query || 27015;
   $("rconPortInput").value = instance.ports?.rcon || 27020;
   $("modsInput").value = (instance.mods || []).join("\n");
@@ -226,6 +227,7 @@ function collectInstanceForm() {
     installDir: $("installDirInput").value.trim(),
     ports: {
       game: Number($("gamePortInput").value),
+      peer: Number($("peerPortInput").value),
       query: Number($("queryPortInput").value),
       rcon: Number($("rconPortInput").value),
     },
@@ -351,6 +353,23 @@ $("installSteamcmdBtn").onclick = async () => {
   }
 };
 $("saveInstanceBtn").onclick = () => saveInstance().catch((error) => toast(error.message));
+$("firewallBtn").onclick = async () => {
+  try {
+    const result = await api(`/api/instances/${encodeURIComponent(state.current.id)}/firewall`, { method: "POST", body: "{}" });
+    toast(result.supported ? "防火墙规则已创建" : result.message);
+  } catch (error) {
+    toast(error.message);
+  }
+};
+$("checkPortsBtn").onclick = async () => {
+  try {
+    const result = await api(`/api/instances/${encodeURIComponent(state.current.id)}/ports`);
+    $("portStatusBox").textContent = JSON.stringify(result, null, 2);
+    toast("端口监听状态已刷新");
+  } catch (error) {
+    toast(error.message);
+  }
+};
 $("configSearch").oninput = renderConfig;
 $("resetDefaultsBtn").onclick = () => {
   state.configValues = Object.fromEntries(state.schema.map((item) => [item.key, item.defaultValue]));

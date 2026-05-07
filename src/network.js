@@ -1,0 +1,92 @@
+import { spawn } from "node:child_process";
+
+function runPowerShell(command) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("powershell.exe", ["-NoProfile", "-Command", command], { windowsHide: true });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) resolve(stdout.trim());
+      else reject(new Error(stderr.trim() || `PowerShell 命令失败，退出码 ${code}`));
+    });
+  });
+}
+
+export function peerPortForInstance(instance) {
+  return Number(instance.ports?.peer) || Number(instance.ports?.game || 7777) + 1;
+}
+
+export function requiredPorts(instance) {
+  return {
+    game: Number(instance.ports?.game) || 7777,
+    peer: peerPortForInstance(instance),
+    query: Number(instance.ports?.query) || 27015,
+    rcon: Number(instance.ports?.rcon) || 27020,
+  };
+}
+
+export async function getPortStatus(instance) {
+  const ports = requiredPorts(instance);
+  if (process.platform !== "win32") {
+    return {
+      ports,
+      listeners: [],
+      supported: false,
+      message: "端口监听检测需要在 Windows 主机上运行",
+    };
+  }
+  const udpPorts = [ports.game, ports.peer, ports.query].join(",");
+  const tcpPorts = [ports.rcon].join(",");
+  const script = [
+    `$udp = Get-NetUDPEndpoint -LocalPort ${udpPorts} -ErrorAction SilentlyContinue | Select-Object @{n='protocol';e={'UDP'}},LocalAddress,LocalPort,OwningProcess`,
+    `$tcp = Get-NetTCPConnection -LocalPort ${tcpPorts} -ErrorAction SilentlyContinue | Select-Object @{n='protocol';e={'TCP'}},LocalAddress,LocalPort,OwningProcess,State`,
+    `$all = @($udp) + @($tcp)`,
+    `$all | ConvertTo-Json -Compress`,
+  ].join("; ");
+  const raw = await runPowerShell(script);
+  const parsed = raw ? JSON.parse(raw) : [];
+  return {
+    ports,
+    listeners: Array.isArray(parsed) ? parsed : [parsed],
+    supported: true,
+  };
+}
+
+export async function ensureFirewallRules(instance) {
+  const ports = requiredPorts(instance);
+  if (process.platform !== "win32") {
+    return {
+      supported: false,
+      message: "防火墙规则创建需要在 Windows 主机上运行",
+      ports,
+    };
+  }
+  const rules = [
+    {
+      name: `ASA ${instance.id} UDP`,
+      protocol: "UDP",
+      ports: `${ports.game},${ports.peer},${ports.query}`,
+    },
+    {
+      name: `ASA ${instance.id} RCON TCP`,
+      protocol: "TCP",
+      ports: `${ports.rcon}`,
+    },
+  ];
+  for (const rule of rules) {
+    const script = [
+      `$name = ${JSON.stringify(rule.name)}`,
+      `Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue | Remove-NetFirewallRule`,
+      `New-NetFirewallRule -DisplayName $name -Direction Inbound -Action Allow -Protocol ${rule.protocol} -LocalPort ${rule.ports} | Out-Null`,
+    ].join("; ");
+    await runPowerShell(script);
+  }
+  return { supported: true, ports, rules };
+}

@@ -101,19 +101,34 @@ export async function startInstance(instance, installDir) {
   });
   child.stdout.pipe(logStream, { end: false });
   child.stderr.pipe(logStream, { end: false });
-  child.on("exit", async (code) => {
+  let runtimeStarted = false;
+  let exitRecord = null;
+  let resolveEarlyExit;
+  const earlyExit = new Promise((resolve) => {
+    resolveEarlyExit = resolve;
+  });
+  const persistExit = async ({ code, error }) => {
     const runtime = await readRuntime();
     runtime.instances[instance.id] = {
       ...(runtime.instances[instance.id] || {}),
-      status: "已停止",
+      status: code === 0 ? "已停止" : "异常退出",
       lastExitCode: code,
+      lastError: error?.message,
       stoppedAt: new Date().toISOString(),
       pid: null,
       logPath,
     };
     await saveRuntime(runtime);
     logStream.end();
-  });
+  };
+  const handleExit = async (code, error) => {
+    if (exitRecord) return;
+    exitRecord = { code, error };
+    resolveEarlyExit(exitRecord);
+    if (runtimeStarted) await persistExit(exitRecord);
+  };
+  child.on("exit", (code) => handleExit(code));
+  child.on("error", (error) => handleExit(null, error));
 
   const runtime = await readRuntime();
   runtime.instances[instance.id] = {
@@ -123,7 +138,18 @@ export async function startInstance(instance, installDir) {
     logPath,
   };
   await saveRuntime(runtime);
+  runtimeStarted = true;
+  if (exitRecord) await persistExit(exitRecord);
+  const early = await Promise.race([earlyExit, delay(3000).then(() => null)]);
+  if (early?.error) throw early.error;
+  if (early) {
+    throw new Error(`服务端启动后立即退出，退出码 ${early.code ?? "未知"}，请查看日志 ${logPath}`);
+  }
   return runtime.instances[instance.id];
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function stopInstance(instanceId) {
