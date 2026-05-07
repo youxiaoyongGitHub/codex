@@ -26,6 +26,9 @@
             <span>SteamCMD 路径</span>
             <input id="steamcmdPath" placeholder="例如 C:\\steamcmd\\steamcmd.exe" />
           </label>
+          <div class="button-row">
+            <button id="findSteamcmdBtn">自动查找 SteamCMD</button>
+          </div>
           <label>
             <span>默认安装根目录</span>
             <input id="defaultInstallRoot" placeholder="例如 D:\\ArkServers" />
@@ -61,6 +64,7 @@
               <button id="startBtn" class="primary">启动</button>
               <button id="stopBtn">停止</button>
               <button id="restartBtn">重启</button>
+              <button id="deleteInstanceBtn" class="danger">删除实例</button>
             </div>
           </section>
 

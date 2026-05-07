@@ -51,6 +51,12 @@ button.primary {
   color: #fff;
 }
 
+button.danger {
+  background: #fff5f5;
+  border-color: #e6b4b4;
+  color: var(--danger);
+}
+
 input,
 textarea,
 select {

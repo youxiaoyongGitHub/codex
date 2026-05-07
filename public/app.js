@@ -302,6 +302,16 @@ $("saveSettingsBtn").onclick = async () => {
   });
   toast("全局设置已保存，端口变更需重启面板");
 };
+$("findSteamcmdBtn").onclick = async () => {
+  const result = await api("/api/steamcmd/find");
+  if (!result.found) {
+    toast(`未找到 SteamCMD，已检查 ${result.searched} 个位置`);
+    return;
+  }
+  $("steamcmdPath").value = result.bestPath;
+  state.settings.steamcmdPath = result.bestPath;
+  toast(`已找到 SteamCMD：${result.bestPath}`);
+};
 $("saveInstanceBtn").onclick = () => saveInstance().catch((error) => toast(error.message));
 $("configSearch").oninput = renderConfig;
 $("resetDefaultsBtn").onclick = () => {
@@ -322,6 +332,17 @@ $("installBtn").onclick = () => runAction("install", "安装/更新已启动").c
 $("startBtn").onclick = () => runAction("start", "服务器已启动").catch((error) => toast(error.message));
 $("stopBtn").onclick = () => runAction("stop", "服务器已停止").catch((error) => toast(error.message));
 $("restartBtn").onclick = () => runAction("restart", "服务器已重启").catch((error) => toast(error.message));
+$("deleteInstanceBtn").onclick = async () => {
+  if (!state.current) return;
+  const confirmed = window.confirm(`确定删除实例“${state.current.name}”吗？这只会删除面板中的实例记录，不会删除服务器安装目录。`);
+  if (!confirmed) return;
+  await api(`/api/instances/${encodeURIComponent(state.current.id)}`, { method: "DELETE" });
+  state.current = null;
+  $("detailView").classList.add("hidden");
+  $("emptyState").classList.remove("hidden");
+  toast("实例已删除");
+  await loadAll();
+};
 $("loadRawBtn").onclick = async () => {
   const file = $("rawFileSelect").value;
   const data = await api(`/api/instances/${encodeURIComponent(state.current.id)}/ini/${encodeURIComponent(file)}`);
