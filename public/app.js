@@ -51,6 +51,7 @@ async function loadAll() {
 function renderSettings() {
   $("steamcmdPath").value = state.settings.steamcmdPath || "";
   $("defaultInstallRoot").value = state.settings.defaultInstallRoot || "";
+  $("steamcmdInstallDir").value = state.settings.steamcmdInstallDir || "";
   $("webPort").value = state.settings.port || 3050;
 }
 
@@ -296,6 +297,7 @@ $("saveSettingsBtn").onclick = async () => {
     body: JSON.stringify({
       ...state.settings,
       steamcmdPath: $("steamcmdPath").value.trim(),
+      steamcmdInstallDir: $("steamcmdInstallDir").value.trim(),
       defaultInstallRoot: $("defaultInstallRoot").value.trim(),
       port: Number($("webPort").value),
     }),
@@ -311,6 +313,22 @@ $("findSteamcmdBtn").onclick = async () => {
   $("steamcmdPath").value = result.bestPath;
   state.settings.steamcmdPath = result.bestPath;
   toast(`已找到 SteamCMD：${result.bestPath}`);
+};
+$("installSteamcmdBtn").onclick = async () => {
+  try {
+    const installDir = $("steamcmdInstallDir").value.trim();
+    toast("正在下载并安装 SteamCMD，请稍候");
+    const result = await api("/api/steamcmd/install", {
+      method: "POST",
+      body: JSON.stringify({ installDir }),
+    });
+    state.settings = result.settings;
+    $("steamcmdPath").value = result.executablePath;
+    $("steamcmdInstallDir").value = result.installDir;
+    toast(`SteamCMD 已安装：${result.executablePath}`);
+  } catch (error) {
+    toast(error.message);
+  }
 };
 $("saveInstanceBtn").onclick = () => saveInstance().catch((error) => toast(error.message));
 $("configSearch").oninput = renderConfig;

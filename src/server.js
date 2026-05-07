@@ -22,7 +22,7 @@ import {
   startInstance,
   stopInstance,
 } from "./process-manager.js";
-import { findSteamcmd } from "./steamcmd.js";
+import { findSteamcmd, installSteamcmd } from "./steamcmd.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, "..", "public");
@@ -95,6 +95,16 @@ async function apiHandler(req, res, pathname) {
   }
   if (route(req.method, pathname, { method: "GET", regex: /^\/api\/steamcmd\/find$/ })) {
     return sendJson(res, 200, await findSteamcmd());
+  }
+  if (route(req.method, pathname, { method: "POST", regex: /^\/api\/steamcmd\/install$/ })) {
+    const body = await readBody(req);
+    const installed = await installSteamcmd(appSettings, body.installDir);
+    const settings = await saveAppSettings({
+      ...appSettings,
+      steamcmdPath: installed.executablePath,
+      steamcmdInstallDir: installed.installDir,
+    });
+    return sendJson(res, 200, { ...installed, settings });
   }
   if (route(req.method, pathname, { method: "GET", regex: /^\/api\/config-schema$/ })) {
     return sendJson(res, 200, {

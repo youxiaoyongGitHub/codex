@@ -11,6 +11,7 @@ export const DEFAULT_APP_SETTINGS = {
   host: "127.0.0.1",
   port: 3050,
   steamcmdPath: "",
+  steamcmdInstallDir: "",
   defaultInstallRoot: path.join(ROOT_DIR, "servers"),
 };
 

@@ -1,6 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { spawn } from "node:child_process";
+
+export const STEAMCMD_DOWNLOAD_URL = "https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip";
 
 const WINDOWS_CANDIDATES = [
   "C:\\steamcmd\\steamcmd.exe",
@@ -72,4 +75,65 @@ export async function findSteamcmd() {
     matches,
     searched: candidates.length,
   };
+}
+
+export function defaultSteamcmdInstallDir(appSettings = {}) {
+  return path.join(appSettings.defaultInstallRoot || process.cwd(), "steamcmd");
+}
+
+export function steamcmdExecutableForDir(installDir) {
+  return path.join(installDir, "steamcmd.exe");
+}
+
+async function downloadFile(url, targetPath) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`下载 SteamCMD 失败：HTTP ${response.status}`);
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  if (!buffer.byteLength) throw new Error("下载 SteamCMD 失败：安装包为空");
+  await fs.writeFile(targetPath, buffer);
+}
+
+function runCommand(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { windowsHide: true });
+    let stderr = "";
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`解压 SteamCMD 失败，退出码 ${code}${stderr ? `：${stderr}` : ""}`));
+    });
+  });
+}
+
+async function extractZip(zipPath, installDir) {
+  if (process.platform === "win32") {
+    await runCommand("powershell.exe", [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-Command",
+      `Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${installDir.replace(/'/g, "''")}' -Force`,
+    ]);
+    return;
+  }
+  await runCommand("unzip", ["-o", zipPath, "-d", installDir]);
+}
+
+export async function installSteamcmd(appSettings = {}, requestedInstallDir = "") {
+  const installDir = path.resolve(requestedInstallDir || defaultSteamcmdInstallDir(appSettings));
+  await fs.mkdir(installDir, { recursive: true });
+  const zipPath = path.join(installDir, "steamcmd.zip");
+  await downloadFile(STEAMCMD_DOWNLOAD_URL, zipPath);
+  await extractZip(zipPath, installDir);
+
+  const executablePath = steamcmdExecutableForDir(installDir);
+  if (!(await executableExists(executablePath))) {
+    throw new Error(`SteamCMD 已下载但未找到 steamcmd.exe：${executablePath}`);
+  }
+  return { installDir, executablePath };
 }
