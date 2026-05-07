@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLaunchArgs, splitExtraArgs } from "../src/process-manager.js";
+import { buildLaunchArgs, buildSteamcmdInstallArgs, splitExtraArgs } from "../src/process-manager.js";
 
 test("启动参数包含地图、端口、Mod 和中文配置对应的原始值", () => {
   const args = buildLaunchArgs({
@@ -37,4 +37,12 @@ test("未设置地图时使用默认 ASA 地图启动名", () => {
     config: {},
   });
   assert.match(args[0], /^TheIsland_WP\?/);
+});
+
+test("SteamCMD 安装参数强制使用 Windows 平台", () => {
+  const args = buildSteamcmdInstallArgs("D:\\ArkServers\\Island");
+  assert.deepEqual(args.slice(0, 2), ["+@sSteamCmdForcePlatformType", "windows"]);
+  assert.ok(args.includes("+force_install_dir"));
+  assert.ok(args.includes("2430930"));
+  assert.ok(args.includes("validate"));
 });

@@ -16,6 +16,16 @@ export const DEFAULT_APP_SETTINGS = {
   defaultInstallRoot: path.join(ROOT_DIR, "servers"),
 };
 
+function normalizeAppSettings(settings) {
+  return {
+    ...DEFAULT_APP_SETTINGS,
+    ...settings,
+    host: settings?.host || DEFAULT_APP_SETTINGS.host,
+    port: Number(settings?.port) || DEFAULT_APP_SETTINGS.port,
+    defaultInstallRoot: settings?.defaultInstallRoot || DEFAULT_APP_SETTINGS.defaultInstallRoot,
+  };
+}
+
 export async function ensureDataDirs() {
   await fs.mkdir(INSTANCES_DIR, { recursive: true });
 }
@@ -49,11 +59,11 @@ export async function writeJsonAtomic(filePath, value) {
 export async function readAppSettings() {
   await ensureDataDirs();
   const settings = await readJson(APP_FILE, DEFAULT_APP_SETTINGS);
-  return { ...DEFAULT_APP_SETTINGS, ...settings };
+  return normalizeAppSettings(settings);
 }
 
 export async function saveAppSettings(settings) {
-  const next = { ...DEFAULT_APP_SETTINGS, ...settings };
+  const next = normalizeAppSettings(settings);
   await writeJsonAtomic(APP_FILE, next);
   return next;
 }

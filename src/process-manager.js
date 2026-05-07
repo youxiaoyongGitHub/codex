@@ -48,18 +48,10 @@ export function serverExecutable(installDir) {
   return path.join(installDir, "ShooterGame", "Binaries", "Win64", "ArkAscendedServer.exe");
 }
 
-export async function installOrUpdateInstance(appSettings, instance, installDir) {
-  if (!appSettings.steamcmdPath) throw new Error("请先在全局设置中配置 SteamCMD 路径");
-  await fs.mkdir(installDir, { recursive: true });
-  const runtime = await readRuntime();
-  runtime.instances[instance.id] = {
-    ...(runtime.instances[instance.id] || {}),
-    status: "安装更新中",
-    updatedAt: new Date().toISOString(),
-  };
-  await saveRuntime(runtime);
-
-  return runCommand(instance.id, appSettings.steamcmdPath, [
+export function buildSteamcmdInstallArgs(installDir) {
+  return [
+    "+@sSteamCmdForcePlatformType",
+    "windows",
     "+force_install_dir",
     installDir,
     "+login",
@@ -68,7 +60,25 @@ export async function installOrUpdateInstance(appSettings, instance, installDir)
     "2430930",
     "validate",
     "+quit",
-  ]);
+  ];
+}
+
+export async function installOrUpdateInstance(appSettings, instance, installDir) {
+  if (!appSettings.steamcmdPath) throw new Error("请先在全局设置中配置 SteamCMD 路径");
+  await fs.mkdir(installDir, { recursive: true });
+  const logsDir = path.join(installDir, "manager-logs");
+  await fs.mkdir(logsDir, { recursive: true });
+  const logPath = path.join(logsDir, `steamcmd-install-${new Date().toISOString().replace(/[:.]/g, "-")}.log`);
+  const runtime = await readRuntime();
+  runtime.instances[instance.id] = {
+    ...(runtime.instances[instance.id] || {}),
+    status: "安装更新中",
+    logPath,
+    updatedAt: new Date().toISOString(),
+  };
+  await saveRuntime(runtime);
+
+  return runCommand(instance.id, appSettings.steamcmdPath, buildSteamcmdInstallArgs(installDir), logPath);
 }
 
 export async function startInstance(instance, installDir) {
@@ -151,14 +161,23 @@ export async function refreshRuntimeStates() {
   return runtime;
 }
 
-function runCommand(instanceId, command, args) {
+function runCommand(instanceId, command, args, logPath) {
   return new Promise(async (resolve, reject) => {
     const runtime = await readRuntime();
-    const child = spawn(command, args, { windowsHide: false });
+    const logStream = logPath ? createWriteStream(logPath, { flags: "a" }) : null;
+    const child = spawn(command, args, {
+      cwd: path.dirname(command),
+      windowsHide: false,
+    });
+    if (logStream) {
+      child.stdout?.pipe(logStream, { end: false });
+      child.stderr?.pipe(logStream, { end: false });
+    }
     runtime.instances[instanceId] = {
       ...(runtime.instances[instanceId] || {}),
       status: "安装更新中",
       pid: child.pid,
+      logPath,
       updatedAt: new Date().toISOString(),
     };
     await saveRuntime(runtime);
@@ -170,12 +189,27 @@ function runCommand(instanceId, command, args) {
         status: code === 0 ? "已停止" : "异常退出",
         pid: null,
         lastExitCode: code,
+        logPath,
         updatedAt: new Date().toISOString(),
       };
       await saveRuntime(next);
+      logStream?.end();
       if (code === 0) resolve(next.instances[instanceId]);
-      else reject(new Error(`安装/更新失败，退出码 ${code}`));
+      else reject(new Error(`安装/更新失败，退出码 ${code}${logPath ? `，请在运行日志中查看 ${logPath}` : ""}`));
     });
-    child.on("error", reject);
+    child.on("error", async (error) => {
+      const next = await readRuntime();
+      next.instances[instanceId] = {
+        ...(next.instances[instanceId] || {}),
+        status: "异常退出",
+        pid: null,
+        lastError: error.message,
+        logPath,
+        updatedAt: new Date().toISOString(),
+      };
+      await saveRuntime(next);
+      logStream?.end();
+      reject(error);
+    });
   });
 }
