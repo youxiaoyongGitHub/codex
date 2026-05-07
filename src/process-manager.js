@@ -21,13 +21,13 @@ export function buildLaunchArgs(instance) {
   const map = instance.map || defaultMapId();
   const query = [
     `listen`,
-    `SessionName=${encodeURIComponent(config.SessionName || instance.name || "方舟飞升私服")}`,
+    `SessionName=${sanitizeLaunchValue(config.SessionName || instance.name || "方舟飞升私服")}`,
     `Port=${instance.ports?.game || 7777}`,
     `QueryPort=${instance.ports?.query || 27015}`,
     `MaxPlayers=${config.MaxPlayers || 10}`,
   ];
-  if (config.ServerPassword) query.push(`ServerPassword=${encodeURIComponent(config.ServerPassword)}`);
-  if (config.ServerAdminPassword) query.push(`ServerAdminPassword=${encodeURIComponent(config.ServerAdminPassword)}`);
+  if (config.ServerPassword) query.push(`ServerPassword=${sanitizeLaunchValue(config.ServerPassword)}`);
+  if (config.ServerAdminPassword) query.push(`ServerAdminPassword=${sanitizeLaunchValue(config.ServerAdminPassword)}`);
 
   const args = [`${map}?${query.join("?")}`];
   if (instance.mods?.length) args.push(`-mods=${instance.mods.join(",")}`);
@@ -35,6 +35,10 @@ export function buildLaunchArgs(instance) {
   if (instance.launch?.battleEye === false) args.push("-NoBattlEye");
   if (instance.launch?.extraArgs) args.push(...splitExtraArgs(instance.launch.extraArgs));
   return args;
+}
+
+function sanitizeLaunchValue(value) {
+  return String(value ?? "").replace(/[?\r\n]/g, " ").trim();
 }
 
 export function splitExtraArgs(value) {
@@ -133,11 +137,15 @@ export async function stopInstance(instanceId) {
 
   if (process.platform === "win32") {
     await new Promise((resolve, reject) => {
-      const child = spawn("taskkill", ["/PID", String(state.pid), "/T"], { windowsHide: true });
+      const child = spawn("taskkill", ["/PID", String(state.pid), "/T", "/F"], { windowsHide: true });
       child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`停止进程失败，退出码 ${code}`))));
     });
   } else if (isProcessAlive(state.pid)) {
     process.kill(state.pid, "SIGTERM");
+  }
+
+  if (isProcessAlive(state.pid)) {
+    throw new Error(`停止进程失败，PID ${state.pid} 仍在运行`);
   }
 
   runtime.instances[instanceId] = {
