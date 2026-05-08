@@ -355,9 +355,12 @@ $("installSteamcmdBtn").onclick = async () => {
 $("saveInstanceBtn").onclick = () => saveInstance().catch((error) => toast(error.message));
 $("firewallBtn").onclick = async () => {
   try {
+    $("portStatusBox").textContent = "正在创建防火墙规则...";
     const result = await api(`/api/instances/${encodeURIComponent(state.current.id)}/firewall`, { method: "POST", body: "{}" });
-    toast(result.supported ? "防火墙规则已创建" : result.message);
+    $("portStatusBox").textContent = JSON.stringify(result, null, 2);
+    toast(result.message || (result.ok ? "防火墙规则已创建" : "防火墙规则创建失败"));
   } catch (error) {
+    $("portStatusBox").textContent = `创建防火墙规则失败：${error.message}`;
     toast(error.message);
   }
 };

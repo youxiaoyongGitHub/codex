@@ -86,7 +86,20 @@ export async function ensureFirewallRules(instance) {
       `Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue | Remove-NetFirewallRule`,
       `New-NetFirewallRule -DisplayName $name -Direction Inbound -Action Allow -Protocol ${rule.protocol} -LocalPort ${rule.ports} | Out-Null`,
     ].join("; ");
-    await runPowerShell(script);
+    try {
+      await runPowerShell(script);
+    } catch (error) {
+      const permissionDenied = /PermissionDenied|System Error 5|拒绝访问|權限|Access is denied/i.test(error.message);
+      return {
+        supported: true,
+        ok: false,
+        ports,
+        rules,
+        message: permissionDenied
+          ? "创建防火墙规则失败：权限不足，请用管理员权限运行开服器"
+          : `创建防火墙规则失败：${error.message}`,
+      };
+    }
   }
-  return { supported: true, ports, rules };
+  return { supported: true, ok: true, ports, rules, message: "防火墙规则已创建" };
 }
