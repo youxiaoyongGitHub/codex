@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import os from "node:os";
 
 function runPowerShell(command) {
   return new Promise((resolve, reject) => {
@@ -29,6 +30,29 @@ export function requiredPorts(instance) {
     peer: peerPortForInstance(instance),
     query: Number(instance.ports?.query) || 27015,
     rcon: Number(instance.ports?.rcon) || 27020,
+  };
+}
+
+export function lanAddresses() {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter((item) => item && item.family === "IPv4" && !item.internal)
+    .map((item) => item.address);
+}
+
+export function connectionInfoForInstance(instance) {
+  const ports = requiredPorts(instance);
+  const addresses = lanAddresses();
+  const host = addresses[0] || "127.0.0.1";
+  const address = `${host}:${ports.game}`;
+  return {
+    host,
+    addresses,
+    port: ports.game,
+    address,
+    consoleCommand: `open ${address}`,
+    steamConnectUrl: `steam://connect/${address}`,
+    note: "ASA 可靠直连方式是在游戏控制台执行 open IP:端口；Steam 链接仅作为候选方式，可能不被当前 ASA 版本接管。",
   };
 }
 

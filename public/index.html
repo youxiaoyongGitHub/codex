@@ -131,6 +131,23 @@
               <button id="checkPortsBtn">检测端口监听</button>
             </div>
             <pre id="portStatusBox" class="small-log"></pre>
+            <div id="connectionBox" class="connection-box hidden">
+              <h3>直连信息</h3>
+              <p id="connectionNote" class="muted"></p>
+              <div class="copy-grid">
+                <label>
+                  <span>局域网地址</span>
+                  <input id="connectionAddress" readonly />
+                </label>
+                <button id="copyAddressBtn">复制地址</button>
+                <label>
+                  <span>游戏控制台命令</span>
+                  <input id="connectionCommand" readonly />
+                </label>
+                <button id="copyCommandBtn">复制命令</button>
+              </div>
+              <a id="steamConnectLink" href="#" target="_blank" rel="noreferrer">尝试用 Steam 候选链接连接</a>
+            </div>
           </section>
 
           <section id="tab-ini" class="tab-panel hidden">

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { peerPortForInstance, requiredPorts } from "../src/network.js";
+import { connectionInfoForInstance, peerPortForInstance, requiredPorts } from "../src/network.js";
 
 test("Peer 端口默认等于游戏端口加一", () => {
   assert.equal(peerPortForInstance({ ports: { game: 7777 } }), 7778);
@@ -14,4 +14,11 @@ test("实例端口配置包含游戏、Peer、查询和 RCON", () => {
     query: 27015,
     rcon: 27020,
   });
+});
+
+test("直连信息使用游戏端口生成控制台命令", () => {
+  const info = connectionInfoForInstance({ ports: { game: 7790 } });
+  assert.match(info.address, /:7790$/);
+  assert.equal(info.consoleCommand, `open ${info.address}`);
+  assert.equal(info.steamConnectUrl, `steam://connect/${info.address}`);
 });

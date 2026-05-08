@@ -17,7 +17,7 @@ import {
 import { CONFIG_CATEGORIES, CONFIG_SCHEMA, validateSchema } from "./config-schema.js";
 import { configPath, readRawIni, syncIniFiles } from "./ini.js";
 import { ASA_MAPS } from "./maps.js";
-import { ensureFirewallRules, getPortStatus, requiredPorts } from "./network.js";
+import { connectionInfoForInstance, ensureFirewallRules, getPortStatus, requiredPorts } from "./network.js";
 import {
   installOrUpdateInstance,
   refreshRuntimeStates,
@@ -227,6 +227,9 @@ async function apiHandler(req, res, pathname) {
   }
   if (req.method === "GET" && suffix === "/ports") {
     return sendJson(res, 200, await getPortStatus(instance));
+  }
+  if (req.method === "GET" && suffix === "/connection") {
+    return sendJson(res, 200, connectionInfoForInstance(instance));
   }
   if (req.method === "POST" && suffix === "/firewall") {
     return sendJson(res, 200, await ensureFirewallRules(instance));

@@ -337,6 +337,35 @@ h3 {
   white-space: pre-wrap;
 }
 
+.connection-box {
+  border: 1px solid #d9e5df;
+  border-radius: 18px;
+  padding: 18px;
+  background: #f7fbf7;
+}
+
+.connection-box h3 {
+  margin-top: 0;
+}
+
+.copy-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+  margin: 12px 0;
+}
+
+.copy-grid label {
+  margin: 0;
+}
+
+@media (max-width: 760px) {
+  .copy-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .toast {
   position: fixed;
   right: 24px;

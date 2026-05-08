@@ -7,6 +7,7 @@ const state = {
   maps: [],
   configValues: {},
   customConfigs: [],
+  connection: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -80,12 +81,14 @@ function renderInstances() {
 async function selectInstance(id) {
   state.current = await api(`/api/instances/${encodeURIComponent(id)}`);
   const config = await api(`/api/instances/${encodeURIComponent(id)}/config`);
+  state.connection = await api(`/api/instances/${encodeURIComponent(id)}/connection`);
   state.configValues = { ...config.values };
   state.customConfigs = [...config.customConfigs];
   $("emptyState").classList.add("hidden");
   $("detailView").classList.remove("hidden");
   renderInstances();
   renderDetail();
+  renderConnection();
   renderConfig();
 }
 
@@ -103,6 +106,16 @@ function renderDetail() {
   $("rconPortInput").value = instance.ports?.rcon || 27020;
   $("modsInput").value = (instance.mods || []).join("\n");
   $("extraArgsInput").value = instance.launch?.extraArgs || "";
+}
+
+function renderConnection() {
+  const info = state.connection;
+  $("connectionBox").classList.toggle("hidden", !info);
+  if (!info) return;
+  $("connectionNote").textContent = info.note || "";
+  $("connectionAddress").value = info.address || "";
+  $("connectionCommand").value = info.consoleCommand || "";
+  $("steamConnectLink").href = info.steamConnectUrl || "#";
 }
 
 function renderMapOptions(mapId) {
@@ -265,6 +278,10 @@ async function runAction(suffix, success) {
   await api(`/api/instances/${encodeURIComponent(state.current.id)}/${suffix}`, { method: "POST", body: "{}" });
   toast(success);
   await loadAll();
+  if (["start", "restart"].includes(suffix) && state.current) {
+    state.connection = await api(`/api/instances/${encodeURIComponent(state.current.id)}/connection`);
+    renderConnection();
+  }
 }
 
 function formatValue(item, value) {
@@ -373,6 +390,8 @@ $("checkPortsBtn").onclick = async () => {
     toast(error.message);
   }
 };
+$("copyAddressBtn").onclick = () => copyText($("connectionAddress").value, "连接地址已复制");
+$("copyCommandBtn").onclick = () => copyText($("connectionCommand").value, "控制台命令已复制");
 $("configSearch").oninput = renderConfig;
 $("resetDefaultsBtn").onclick = () => {
   state.configValues = Object.fromEntries(state.schema.map((item) => [item.key, item.defaultValue]));
@@ -428,5 +447,10 @@ $("loadLogsBtn").onclick = async () => {
   const data = await api(`/api/instances/${encodeURIComponent(state.current.id)}/logs`);
   $("logsBox").textContent = data.log || "暂无日志";
 };
+
+async function copyText(value, message) {
+  await navigator.clipboard.writeText(value);
+  toast(message);
+}
 
 loadAll().catch((error) => toast(error.message));
