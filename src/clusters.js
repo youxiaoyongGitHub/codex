@@ -36,7 +36,12 @@ export function createClusterId(name = "方舟集群") {
 }
 
 export function createArkClusterId(clusterId) {
-  return `asa-${String(clusterId).replace(/[^a-z0-9_-]+/gi, "-").slice(0, 48)}`;
+  const ascii = String(clusterId)
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const suffix = ascii || Date.now().toString(36);
+  return `asa-${suffix.slice(0, 48)}`;
 }
 
 export function defaultCluster(name = "新建方舟集群") {

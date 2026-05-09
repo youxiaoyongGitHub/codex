@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import {
   addInstanceToCluster,
   clusterFile,
+  createArkClusterId,
   createCluster,
   deleteCluster,
   ensureClusterRuntimeDir,
@@ -31,6 +32,11 @@ test("集群 JSON 创建、读取、更新成员和删除", async () => {
   await deleteCluster(cluster.id);
   await assert.rejects(readCluster(cluster.id), /集群不存在/);
   await fs.rm(instanceFile(instanceId), { force: true });
+});
+
+test("中文集群 ID 会生成可用的 ASCII ARK cluster id", () => {
+  assert.match(createArkClusterId("新建方舟集群-moybgbua"), /^asa-[a-z0-9_-]+$/i);
+  assert.notEqual(createArkClusterId("新建方舟集群-moybgbua"), "asa---moybgbua");
 });
 
 test("集群目录不存在时会自动创建", async () => {

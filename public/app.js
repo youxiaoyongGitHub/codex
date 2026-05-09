@@ -37,26 +37,36 @@ function toast(message) {
 }
 
 async function loadAll() {
-  const [settings, instances, schemaData, mapsData, clustersData] = await Promise.all([
+  const [settings, instances, schemaData, mapsData] = await Promise.all([
     api("/api/settings"),
     api("/api/instances"),
     api("/api/config-schema"),
     api("/api/maps"),
-    api("/api/clusters"),
   ]);
   state.settings = settings;
   state.instances = instances;
   state.schema = schemaData.schema;
   state.categories = schemaData.categories;
   state.maps = mapsData.maps;
-  state.clusters = clustersData.clusters || [];
-  if (!state.selectedClusterId && state.clusters.length) state.selectedClusterId = state.clusters[0].id;
   renderSettings();
   renderInstances();
+  try {
+    const clustersData = await api("/api/clusters");
+    state.clusters = clustersData.clusters || [];
+  } catch (error) {
+    state.clusters = [];
+    toast(`集群列表加载失败：${error.message}`);
+  }
+  if (!state.selectedClusterId && state.clusters.length) state.selectedClusterId = state.clusters[0].id;
   renderClusterTab();
   if (state.current) {
     const latest = state.instances.find((item) => item.id === state.current.id);
     if (latest) await selectInstance(latest.id);
+    else {
+      state.current = null;
+      $("detailView").classList.add("hidden");
+      $("emptyState").classList.remove("hidden");
+    }
   }
 }
 
@@ -89,14 +99,22 @@ function renderInstances() {
 
 async function selectInstance(id) {
   state.current = await api(`/api/instances/${encodeURIComponent(id)}`);
-  const [config, connection, backupData] = await Promise.all([
-    api(`/api/instances/${encodeURIComponent(id)}/config`),
-    api(`/api/instances/${encodeURIComponent(id)}/connection`),
-    api(`/api/instances/${encodeURIComponent(id)}/backups`),
-  ]);
-  state.connection = connection;
-  state.backups = backupData.backups || [];
-  state.saveDir = backupData.saveDir || "";
+  const config = await api(`/api/instances/${encodeURIComponent(id)}/config`);
+  try {
+    state.connection = await api(`/api/instances/${encodeURIComponent(id)}/connection`);
+  } catch (error) {
+    state.connection = null;
+    toast(`直连信息加载失败：${error.message}`);
+  }
+  try {
+    const backupData = await api(`/api/instances/${encodeURIComponent(id)}/backups`);
+    state.backups = backupData.backups || [];
+    state.saveDir = backupData.saveDir || "";
+  } catch (error) {
+    state.backups = [];
+    state.saveDir = "";
+    toast(`备份信息加载失败：${error.message}`);
+  }
   state.configValues = { ...config.values };
   state.customConfigs = [...config.customConfigs];
   $("emptyState").classList.add("hidden");
@@ -227,6 +245,9 @@ function renderClusterInstanceOptions(cluster) {
     const current = instance.clusterId ? " · 将从原集群移入" : "";
     return `<option value="${escapeAttr(instance.id)}">${escapeHtml(instance.name)}（${escapeHtml(instance.map || "")}${current}）</option>`;
   }).join("");
+  if (!candidates.length) {
+    select.innerHTML = '<option value="">没有可加入的实例</option>';
+  }
 }
 
 function renderClusterMembers(cluster) {
@@ -492,7 +513,14 @@ async function deleteCluster() {
 async function addClusterMember() {
   const cluster = selectedCluster();
   const instanceId = $("clusterInstanceSelect").value;
-  if (!cluster || !instanceId) return;
+  if (!cluster) {
+    toast("请先创建或选择集群");
+    return;
+  }
+  if (!instanceId) {
+    toast("没有可加入该集群的实例");
+    return;
+  }
   await api(`/api/clusters/${encodeURIComponent(cluster.id)}/members`, {
     method: "POST",
     body: JSON.stringify({ instanceId }),
