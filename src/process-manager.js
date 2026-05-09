@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { readRuntime, saveRuntime } from "./storage.js";
 import { syncIniFiles } from "./ini.js";
 import { defaultMapId } from "./maps.js";
+import { ensureClusterRuntimeDir } from "./clusters.js";
 
 export function isProcessAlive(pid) {
   if (!pid) return false;
@@ -16,7 +17,7 @@ export function isProcessAlive(pid) {
   }
 }
 
-export function buildLaunchArgs(instance) {
+export function buildLaunchArgs(instance, cluster = null) {
   const config = instance.config || {};
   const map = instance.map || defaultMapId();
   const query = [
@@ -32,6 +33,7 @@ export function buildLaunchArgs(instance) {
   const args = [`${map}?${query.join("?")}`];
   if (instance.mods?.length) args.push(`-mods=${instance.mods.join(",")}`);
   if (instance.config?.RCONEnabled !== false) args.push("-RCONEnabled=True", `-RCONPort=${instance.ports?.rcon || instance.config?.RCONPort || 27020}`);
+  if (cluster) args.push(`-clusterid=${cluster.arkClusterId}`, `-ClusterDirOverride=${cluster.clusterDir}`);
   if (instance.launch?.battleEye === false) args.push("-NoBattlEye");
   if (instance.launch?.extraArgs) args.push(...splitExtraArgs(instance.launch.extraArgs));
   return args;
@@ -85,16 +87,17 @@ export async function installOrUpdateInstance(appSettings, instance, installDir)
   return runCommand(instance.id, appSettings.steamcmdPath, buildSteamcmdInstallArgs(installDir), logPath);
 }
 
-export async function startInstance(instance, installDir) {
+export async function startInstance(instance, installDir, cluster = null) {
   const exe = serverExecutable(installDir);
   await fs.access(exe);
+  if (cluster) await ensureClusterRuntimeDir(cluster);
   await syncIniFiles(instance, installDir);
 
   const logsDir = path.join(installDir, "manager-logs");
   await fs.mkdir(logsDir, { recursive: true });
   const logPath = path.join(logsDir, `${new Date().toISOString().replace(/[:.]/g, "-")}.log`);
   const logStream = createWriteStream(logPath, { flags: "a" });
-  const child = spawn(exe, buildLaunchArgs(instance), {
+  const child = spawn(exe, buildLaunchArgs(instance, cluster), {
     cwd: path.dirname(exe),
     detached: false,
     windowsHide: false,

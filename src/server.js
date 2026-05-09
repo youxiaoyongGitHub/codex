@@ -20,6 +20,20 @@ import { ASA_MAPS } from "./maps.js";
 import { connectionInfoForInstance, ensureFirewallRules, getPortStatus, requiredPorts } from "./network.js";
 import { createSaveBackup, listSaveBackups, restoreSaveBackup, saveDirForInstance } from "./save-backups.js";
 import {
+  addInstanceToCluster,
+  clusterDirectoryStatus,
+  clusterMembers,
+  createCluster,
+  deleteCluster,
+  ensureClusterDirs,
+  listClusters,
+  readCluster,
+  removeInstanceFromAllClusters,
+  removeInstanceFromCluster,
+  resolveInstanceCluster,
+  saveCluster,
+} from "./clusters.js";
+import {
   installOrUpdateInstance,
   refreshRuntimeStates,
   startInstance,
@@ -94,10 +108,26 @@ function sanitizeInstanceInput(input) {
     ports: input.ports,
     mods: Array.isArray(input.mods) ? input.mods : [],
     launch: input.launch,
+    clusterId: input.clusterId || "",
     config: input.config || {},
     customConfigs: Array.isArray(input.customConfigs) ? input.customConfigs : [],
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
+  };
+}
+
+async function clusterPayload(cluster, runtime = null) {
+  const members = await clusterMembers(cluster);
+  return {
+    ...cluster,
+    directory: await clusterDirectoryStatus(cluster),
+    members: members.map((instance) => ({
+      id: instance.id,
+      name: instance.name,
+      map: instance.map,
+      ports: instance.ports,
+      runtime: runtime?.instances?.[instance.id] || { status: "已停止" },
+    })),
   };
 }
 
@@ -138,6 +168,16 @@ async function apiHandler(req, res, pathname) {
   if (route(req.method, pathname, { method: "GET", regex: /^\/api\/maps$/ })) {
     return sendJson(res, 200, { maps: ASA_MAPS });
   }
+  if (route(req.method, pathname, { method: "GET", regex: /^\/api\/clusters$/ })) {
+    const runtime = await refreshRuntimeStates();
+    const clusters = await Promise.all((await listClusters()).map((cluster) => clusterPayload(cluster, runtime)));
+    return sendJson(res, 200, { clusters });
+  }
+  if (route(req.method, pathname, { method: "POST", regex: /^\/api\/clusters$/ })) {
+    const body = await readBody(req);
+    const cluster = await createCluster({ name: body.name || "新建方舟集群", clusterDir: body.clusterDir });
+    return sendJson(res, 201, await clusterPayload(cluster, await readRuntime()));
+  }
   if (route(req.method, pathname, { method: "GET", regex: /^\/api\/instances$/ })) {
     const runtime = await refreshRuntimeStates();
     const instances = await listInstances();
@@ -153,6 +193,43 @@ async function apiHandler(req, res, pathname) {
     instance.installDir = instance.installDir || resolveInstallDir(appSettings, instance);
     validateInstance(instance, await listInstances(), appSettings);
     return sendJson(res, 201, await saveInstance(instance));
+  }
+
+  const clusterMatch = route(req.method, pathname, {
+    method: req.method,
+    regex: /^\/api\/clusters\/(?<id>[^/]+)(?<suffix>\/.*)?$/,
+  });
+  if (clusterMatch) {
+    const cluster = await readCluster(decodeURIComponent(clusterMatch.id));
+    const suffix = clusterMatch.suffix || "";
+    if (req.method === "GET" && suffix === "") {
+      return sendJson(res, 200, await clusterPayload(cluster, await refreshRuntimeStates()));
+    }
+    if (req.method === "PUT" && suffix === "") {
+      const body = await readBody(req);
+      const next = await saveCluster({
+        ...cluster,
+        name: body.name || cluster.name,
+        arkClusterId: body.arkClusterId || cluster.arkClusterId,
+        clusterDir: body.clusterDir || cluster.clusterDir,
+      });
+      return sendJson(res, 200, await clusterPayload(next, await readRuntime()));
+    }
+    if (req.method === "DELETE" && suffix === "") {
+      return sendJson(res, 200, { ok: true, deleted: await deleteCluster(cluster.id) });
+    }
+    if (req.method === "POST" && suffix === "/members") {
+      const body = await readBody(req);
+      if (!body.instanceId) throw Object.assign(new Error("请选择要加入集群的实例"), { statusCode: 400 });
+      const next = await addInstanceToCluster(cluster.id, body.instanceId);
+      return sendJson(res, 200, await clusterPayload(next, await readRuntime()));
+    }
+    if (req.method === "DELETE" && suffix.startsWith("/members/")) {
+      const instanceId = decodeURIComponent(suffix.replace("/members/", ""));
+      const next = await removeInstanceFromCluster(cluster.id, instanceId);
+      return sendJson(res, 200, await clusterPayload(next, await readRuntime()));
+    }
+    return false;
   }
 
   const instanceMatch = route(req.method, pathname, {
@@ -185,6 +262,7 @@ async function apiHandler(req, res, pathname) {
       deleteData,
       installDir: resolveInstallDir(appSettings, instance),
     });
+    await removeInstanceFromAllClusters(instance.id);
     return sendJson(res, 200, { ok: true, deleted });
   }
   if (req.method === "GET" && suffix === "/config") {
@@ -214,7 +292,7 @@ async function apiHandler(req, res, pathname) {
     return sendJson(res, 200, state);
   }
   if (req.method === "POST" && suffix === "/start") {
-    const state = await startInstance(instance, resolveInstallDir(appSettings, instance));
+    const state = await startInstance(instance, resolveInstallDir(appSettings, instance), await resolveInstanceCluster(instance));
     return sendJson(res, 200, state);
   }
   if (req.method === "POST" && suffix === "/stop") {
@@ -223,7 +301,7 @@ async function apiHandler(req, res, pathname) {
   }
   if (req.method === "POST" && suffix === "/restart") {
     await stopInstance(instance.id);
-    const state = await startInstance(instance, resolveInstallDir(appSettings, instance));
+    const state = await startInstance(instance, resolveInstallDir(appSettings, instance), await resolveInstanceCluster(instance));
     return sendJson(res, 200, state);
   }
   if (req.method === "GET" && suffix === "/ports") {
@@ -311,6 +389,7 @@ async function staticHandler(req, res, pathname) {
 
 async function main() {
   await ensureDataDirs();
+  await ensureClusterDirs();
   const settings = await readAppSettings();
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || "127.0.0.1"}`);

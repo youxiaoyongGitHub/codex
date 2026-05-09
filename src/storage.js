@@ -109,6 +109,7 @@ export function defaultInstance(name = "新建方舟私服") {
       battleEye: true,
       extraArgs: "",
     },
+    clusterId: "",
     config: {},
     customConfigs: [],
     createdAt: new Date().toISOString(),

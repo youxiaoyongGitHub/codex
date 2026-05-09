@@ -37,6 +37,36 @@ test("启动参数保留中文服务器名称", () => {
   assert.doesNotMatch(args[0], /%E5/);
 });
 
+test("加入集群的启动参数包含集群 ID 和共享目录", () => {
+  const args = buildLaunchArgs(
+    {
+      name: "集群服",
+      map: "TheIsland_WP",
+      ports: { game: 7777, query: 27015, rcon: 27020 },
+      mods: [],
+      launch: {},
+      config: {},
+    },
+    { arkClusterId: "asa-test", clusterDir: "D:\\ArkClusters\\asa-test" },
+  );
+  assert.ok(args.includes("-clusterid=asa-test"));
+  assert.ok(args.includes("-ClusterDirOverride=D:\\ArkClusters\\asa-test"));
+  assert.ok(!args.includes("-NoTransferFromFiltering"));
+});
+
+test("未加入集群时启动参数保持单实例行为", () => {
+  const args = buildLaunchArgs({
+    name: "单服",
+    map: "TheIsland_WP",
+    ports: { game: 7777, query: 27015, rcon: 27020 },
+    mods: [],
+    launch: {},
+    config: {},
+  });
+  assert.equal(args.some((item) => item.startsWith("-clusterid=")), false);
+  assert.equal(args.some((item) => item.startsWith("-ClusterDirOverride=")), false);
+});
+
 test("额外启动参数支持带引号参数", () => {
   assert.deepEqual(splitExtraArgs('-foo "bar baz" -flag'), ["-foo", "bar baz", "-flag"]);
 });

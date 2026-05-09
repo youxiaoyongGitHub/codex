@@ -80,6 +80,7 @@
             <button data-tab="ini">中文 INI 配置</button>
             <button data-tab="raw">原始 INI</button>
             <button data-tab="backups">存档备份</button>
+            <button data-tab="clusters">集群管理</button>
             <button data-tab="logs">运行日志</button>
           </nav>
 
@@ -133,6 +134,11 @@
               <button id="checkPortsBtn">检测端口监听</button>
             </div>
             <pre id="portStatusBox" class="small-log"></pre>
+            <div id="instanceClusterBox" class="connection-box hidden">
+              <h3>所属集群</h3>
+              <p id="instanceClusterSummary" class="muted"></p>
+              <div id="instanceClusterMembers" class="cluster-list"></div>
+            </div>
             <div id="connectionBox" class="connection-box hidden">
               <h3>直连信息</h3>
               <p id="connectionNote" class="muted"></p>
@@ -195,6 +201,47 @@
             </div>
             <p id="saveDirText" class="muted"></p>
             <div id="backupList" class="backup-list"></div>
+          </section>
+
+          <section id="tab-clusters" class="tab-panel hidden">
+            <div class="section-head">
+              <div>
+                <h3>集群管理</h3>
+                <p class="muted">同一集群内的实例会使用相同 cluster id 和共享目录，用于 Cross-ARK 传送。</p>
+              </div>
+              <div class="button-row">
+                <button id="refreshClustersBtn">刷新集群</button>
+                <button id="createClusterBtn" class="primary">新建集群</button>
+              </div>
+            </div>
+            <div class="grid two">
+              <label>
+                <span>选择集群</span>
+                <select id="clusterSelect"></select>
+              </label>
+              <label>
+                <span>ARK 原始 cluster id</span>
+                <input id="clusterArkIdInput" />
+              </label>
+              <label>
+                <span>集群中文名称</span>
+                <input id="clusterNameInput" />
+              </label>
+              <label>
+                <span>共享集群目录</span>
+                <input id="clusterDirInput" />
+              </label>
+            </div>
+            <div class="button-row">
+              <button id="saveClusterBtn" class="primary">保存集群</button>
+              <button id="deleteClusterBtn" class="danger">删除集群记录</button>
+            </div>
+            <p id="clusterDirStatus" class="muted"></p>
+            <div class="toolbar">
+              <select id="clusterInstanceSelect"></select>
+              <button id="addClusterMemberBtn">加入选中实例</button>
+            </div>
+            <div id="clusterMembersList" class="backup-list"></div>
           </section>
 
           <section id="tab-logs" class="tab-panel hidden">

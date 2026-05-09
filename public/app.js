@@ -10,6 +10,8 @@ const state = {
   connection: null,
   backups: [],
   saveDir: "",
+  clusters: [],
+  selectedClusterId: "",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -35,19 +37,23 @@ function toast(message) {
 }
 
 async function loadAll() {
-  const [settings, instances, schemaData, mapsData] = await Promise.all([
+  const [settings, instances, schemaData, mapsData, clustersData] = await Promise.all([
     api("/api/settings"),
     api("/api/instances"),
     api("/api/config-schema"),
     api("/api/maps"),
+    api("/api/clusters"),
   ]);
   state.settings = settings;
   state.instances = instances;
   state.schema = schemaData.schema;
   state.categories = schemaData.categories;
   state.maps = mapsData.maps;
+  state.clusters = clustersData.clusters || [];
+  if (!state.selectedClusterId && state.clusters.length) state.selectedClusterId = state.clusters[0].id;
   renderSettings();
   renderInstances();
+  renderClusterTab();
   if (state.current) {
     const latest = state.instances.find((item) => item.id === state.current.id);
     if (latest) await selectInstance(latest.id);
@@ -74,6 +80,7 @@ function renderInstances() {
     button.innerHTML = `
       <strong>${escapeHtml(instance.name)}</strong>
       <span class="muted">${escapeHtml(instance.runtime?.status || "已停止")} · ${escapeHtml(instance.map || "")}</span>
+      ${instance.clusterId ? '<span class="pill">已加入集群</span>' : ""}
     `;
     button.onclick = () => selectInstance(instance.id);
     list.appendChild(button);
@@ -97,7 +104,9 @@ async function selectInstance(id) {
   renderInstances();
   renderDetail();
   renderConnection();
+  renderInstanceClusterInfo();
   renderBackups();
+  renderClusterTab();
   renderConfig();
   await loadRawIni(false);
 }
@@ -128,6 +137,30 @@ function renderConnection() {
   $("steamConnectLink").href = info.steamConnectUrl || "#";
 }
 
+function renderInstanceClusterInfo() {
+  const cluster = state.clusters.find((item) => item.id === state.current?.clusterId);
+  $("instanceClusterBox").classList.toggle("hidden", !cluster);
+  if (!cluster) return;
+  $("instanceClusterSummary").textContent = `集群：${cluster.name}；ARK cluster id：${cluster.arkClusterId}；共享目录：${cluster.clusterDir}`;
+  const root = $("instanceClusterMembers");
+  root.innerHTML = "";
+  for (const member of cluster.members || []) {
+    const card = document.createElement("div");
+    card.className = "cluster-member-card";
+    card.innerHTML = `
+      <div>
+        <strong>${escapeHtml(member.name)}</strong>
+        <div class="cluster-meta">
+          <span class="pill">${escapeHtml(member.map || "")}</span>
+          <span class="pill">${escapeHtml(member.runtime?.status || "已停止")}</span>
+          <span class="pill">端口 ${escapeHtml(member.ports?.game || "")}</span>
+        </div>
+      </div>
+    `;
+    root.appendChild(card);
+  }
+}
+
 function renderBackups() {
   $("saveDirText").textContent = `当前存档目录：${state.saveDir || "未安装或未生成"}`;
   const root = $("backupList");
@@ -152,6 +185,77 @@ function renderBackups() {
       <button class="danger">恢复此备份</button>
     `;
     card.querySelector("button").onclick = () => restoreBackup(backup.id).catch((error) => toast(error.message));
+    root.appendChild(card);
+  }
+}
+
+function renderClusterTab() {
+  const select = $("clusterSelect");
+  select.innerHTML = state.clusters.map((cluster) => (
+    `<option value="${escapeAttr(cluster.id)}">${escapeHtml(cluster.name)}（${escapeHtml(cluster.arkClusterId)}）</option>`
+  )).join("");
+  if (state.selectedClusterId && state.clusters.some((cluster) => cluster.id === state.selectedClusterId)) {
+    select.value = state.selectedClusterId;
+  } else if (state.clusters.length) {
+    state.selectedClusterId = state.clusters[0].id;
+    select.value = state.selectedClusterId;
+  } else {
+    state.selectedClusterId = "";
+  }
+
+  const cluster = selectedCluster();
+  $("clusterNameInput").value = cluster?.name || "";
+  $("clusterArkIdInput").value = cluster?.arkClusterId || "";
+  $("clusterDirInput").value = cluster?.clusterDir || "";
+  $("clusterDirStatus").textContent = cluster ? `目录状态：${cluster.directory?.exists ? "已存在" : "尚未创建"} · ${cluster.directory?.path || cluster.clusterDir}` : "暂无集群，请先新建集群。";
+  $("saveClusterBtn").disabled = !cluster;
+  $("deleteClusterBtn").disabled = !cluster;
+  $("addClusterMemberBtn").disabled = !cluster || !state.instances.length;
+  renderClusterInstanceOptions(cluster);
+  renderClusterMembers(cluster);
+}
+
+function selectedCluster() {
+  return state.clusters.find((cluster) => cluster.id === state.selectedClusterId) || null;
+}
+
+function renderClusterInstanceOptions(cluster) {
+  const select = $("clusterInstanceSelect");
+  const memberIds = new Set(cluster?.memberInstanceIds || []);
+  const candidates = state.instances.filter((instance) => !memberIds.has(instance.id));
+  select.innerHTML = candidates.map((instance) => {
+    const current = instance.clusterId ? " · 将从原集群移入" : "";
+    return `<option value="${escapeAttr(instance.id)}">${escapeHtml(instance.name)}（${escapeHtml(instance.map || "")}${current}）</option>`;
+  }).join("");
+}
+
+function renderClusterMembers(cluster) {
+  const root = $("clusterMembersList");
+  root.innerHTML = "";
+  if (!cluster) {
+    root.innerHTML = '<p class="muted">暂无集群。</p>';
+    return;
+  }
+  if (!cluster.members?.length) {
+    root.innerHTML = '<p class="muted">该集群还没有实例成员。</p>';
+    return;
+  }
+  for (const member of cluster.members) {
+    const card = document.createElement("article");
+    card.className = "cluster-member-card";
+    card.innerHTML = `
+      <div>
+        <strong>${escapeHtml(member.name)}</strong>
+        <div class="cluster-meta">
+          <span class="pill">地图：${escapeHtml(member.map || "")}</span>
+          <span class="pill">状态：${escapeHtml(member.runtime?.status || "已停止")}</span>
+          <span class="pill">游戏端口：${escapeHtml(member.ports?.game || "")}</span>
+          <span class="pill">查询端口：${escapeHtml(member.ports?.query || "")}</span>
+        </div>
+      </div>
+      <button class="danger">移出集群</button>
+    `;
+    card.querySelector("button").onclick = () => removeClusterMember(member.id).catch((error) => toast(error.message));
     root.appendChild(card);
   }
 }
@@ -344,6 +448,67 @@ async function loadBackups() {
   renderBackups();
 }
 
+async function loadClusters() {
+  const data = await api("/api/clusters");
+  state.clusters = data.clusters || [];
+  renderClusterTab();
+  renderInstanceClusterInfo();
+}
+
+async function createCluster() {
+  const cluster = await api("/api/clusters", {
+    method: "POST",
+    body: JSON.stringify({ name: "新建方舟集群" }),
+  });
+  state.selectedClusterId = cluster.id;
+  toast("集群已创建");
+  await loadAll();
+}
+
+async function saveCluster() {
+  const cluster = selectedCluster();
+  if (!cluster) return;
+  await api(`/api/clusters/${encodeURIComponent(cluster.id)}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      name: $("clusterNameInput").value.trim(),
+      arkClusterId: $("clusterArkIdInput").value.trim(),
+      clusterDir: $("clusterDirInput").value.trim(),
+    }),
+  });
+  toast("集群已保存");
+  await loadAll();
+}
+
+async function deleteCluster() {
+  const cluster = selectedCluster();
+  if (!cluster || !confirm(`确定删除集群“${cluster.name}”记录吗？不会删除共享目录。`)) return;
+  await api(`/api/clusters/${encodeURIComponent(cluster.id)}`, { method: "DELETE" });
+  state.selectedClusterId = "";
+  toast("集群记录已删除");
+  await loadAll();
+}
+
+async function addClusterMember() {
+  const cluster = selectedCluster();
+  const instanceId = $("clusterInstanceSelect").value;
+  if (!cluster || !instanceId) return;
+  await api(`/api/clusters/${encodeURIComponent(cluster.id)}/members`, {
+    method: "POST",
+    body: JSON.stringify({ instanceId }),
+  });
+  toast("实例已加入集群");
+  await loadAll();
+}
+
+async function removeClusterMember(instanceId) {
+  const cluster = selectedCluster();
+  if (!cluster) return;
+  await api(`/api/clusters/${encodeURIComponent(cluster.id)}/members/${encodeURIComponent(instanceId)}`, { method: "DELETE" });
+  toast("实例已移出集群");
+  await loadAll();
+}
+
 async function createBackup() {
   $("createBackupBtn").disabled = true;
   try {
@@ -502,6 +667,15 @@ $("copyAddressBtn").onclick = () => copyText($("connectionAddress").value, "连�
 $("copyCommandBtn").onclick = () => copyText($("connectionCommand").value, "控制台命令已复制");
 $("refreshBackupsBtn").onclick = () => loadBackups().then(() => toast("备份列表已刷新")).catch((error) => toast(error.message));
 $("createBackupBtn").onclick = () => createBackup().catch((error) => toast(error.message));
+$("refreshClustersBtn").onclick = () => loadClusters().then(() => toast("集群列表已刷新")).catch((error) => toast(error.message));
+$("createClusterBtn").onclick = () => createCluster().catch((error) => toast(error.message));
+$("clusterSelect").onchange = () => {
+  state.selectedClusterId = $("clusterSelect").value;
+  renderClusterTab();
+};
+$("saveClusterBtn").onclick = () => saveCluster().catch((error) => toast(error.message));
+$("deleteClusterBtn").onclick = () => deleteCluster().catch((error) => toast(error.message));
+$("addClusterMemberBtn").onclick = () => addClusterMember().catch((error) => toast(error.message));
 $("configSearch").oninput = renderConfig;
 $("resetDefaultsBtn").onclick = () => {
   state.configValues = Object.fromEntries(state.schema.map((item) => [item.key, item.defaultValue]));

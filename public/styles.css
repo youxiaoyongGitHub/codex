@@ -392,7 +392,13 @@ h3 {
   gap: 12px;
 }
 
-.backup-card {
+.cluster-list {
+  display: grid;
+  gap: 10px;
+}
+
+.backup-card,
+.cluster-member-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
@@ -401,12 +407,14 @@ h3 {
   background: #fbfdfc;
 }
 
-.backup-card strong {
+.backup-card strong,
+.cluster-member-card strong {
   display: block;
   margin-bottom: 7px;
 }
 
-.backup-meta {
+.backup-meta,
+.cluster-meta {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -439,7 +447,8 @@ h3 {
     grid-template-columns: 1fr;
   }
 
-  .backup-card {
+  .backup-card,
+  .cluster-member-card {
     grid-template-columns: 1fr;
   }
 }
