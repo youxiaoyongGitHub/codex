@@ -18,6 +18,7 @@ export const ASA_MAPS = [
     displayNameZh: "中心岛",
     englishName: "The Center",
     typeZh: "官方非剧情地图",
+    aliasesZh: ["中心"],
     descriptionZh: "大型奇观地图，包含浮岛、地下世界和多样化地貌。",
   },
   {
@@ -36,16 +37,18 @@ export const ASA_MAPS = [
   },
   {
     id: "Astraeos_WP",
-    displayNameZh: "阿斯特瑞奥斯",
+    displayNameZh: "繁星",
     englishName: "Astraeos",
     typeZh: "官方高级地图",
+    aliasesZh: ["阿斯特瑞奥斯", "星神"],
     descriptionZh: "希腊神话风格高级地图，属于 ASA 官方支持的扩展地图。",
   },
   {
     id: "Ragnarok_WP",
-    displayNameZh: "诸神黄昏",
+    displayNameZh: "仙境",
     englishName: "Ragnarok",
     typeZh: "官方非剧情地图",
+    aliasesZh: ["诸神黄昏"],
     descriptionZh: "大型开放地图，包含峡湾、沙漠、雪山、火山和多种资源区。",
   },
   {
@@ -53,6 +56,7 @@ export const ASA_MAPS = [
     displayNameZh: "瓦尔盖罗",
     englishName: "Valguero",
     typeZh: "计划/兼容地图",
+    aliasesZh: ["瓦尔古罗"],
     descriptionZh: "经典扩展地图启动名预置；如果当前服务端版本尚未发布该地图，请使用自定义地图确认。",
   },
   {
@@ -64,16 +68,26 @@ export const ASA_MAPS = [
   },
   {
     id: "LostIsland_WP",
-    displayNameZh: "失落之岛",
+    displayNameZh: "失落之地",
     englishName: "Lost Island",
     typeZh: "计划/兼容地图",
+    aliasesZh: ["失落之岛", "迷失岛", "失落岛"],
     descriptionZh: "经典扩展地图启动名预置；如果当前服务端版本尚未发布该地图，请使用自定义地图确认。",
+  },
+  {
+    id: "LostColony_WP",
+    displayNameZh: "失落殖民地",
+    englishName: "Lost Colony",
+    typeZh: "官方剧情地图",
+    aliasesZh: ["失落之地殖民地"],
+    descriptionZh: "ASA 新增剧情地图启动名预置；如果当前服务端版本尚未发布该地图，请使用自定义地图确认。",
   },
   {
     id: "Fjordur_WP",
     displayNameZh: "峡湾",
     englishName: "Fjordur",
     typeZh: "计划/兼容地图",
+    aliasesZh: ["菲尤尔"],
     descriptionZh: "经典扩展地图启动名预置；如果当前服务端版本尚未发布该地图，请使用自定义地图确认。",
   },
   {

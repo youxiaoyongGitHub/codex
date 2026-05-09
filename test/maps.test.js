@@ -9,5 +9,9 @@ test("ASA 地图字典提供中文显示和原始启动名", () => {
   assert.equal(island.englishName, "The Island");
   assert.equal(defaultMapId(), "TheIsland_WP");
   assert.equal(isKnownMap("ScorchedEarth_WP"), true);
+  assert.equal(isKnownMap("Astraeos_WP"), true);
+  assert.equal(isKnownMap("LostColony_WP"), true);
   assert.equal(isKnownMap("Unknown_WP"), false);
+  assert.ok(ASA_MAPS.find((map) => map.id === "Astraeos_WP").displayNameZh.includes("繁星"));
+  assert.ok(ASA_MAPS.find((map) => map.id === "LostIsland_WP").aliasesZh.includes("迷失岛"));
 });

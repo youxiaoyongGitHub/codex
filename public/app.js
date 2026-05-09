@@ -108,7 +108,7 @@ function renderDetail() {
   $("instanceStatus").textContent = instance.runtime?.status || "已停止";
   $("instancePath").textContent = instance.resolvedInstallDir || "";
   $("nameInput").value = instance.name || "";
-  renderMapOptions(instance.map || "");
+  renderMapOptions(instance.map || "", $("mapSearchInput").value);
   $("installDirInput").value = instance.installDir || instance.resolvedInstallDir || "";
   $("gamePortInput").value = instance.ports?.game || 7777;
   $("peerPortInput").value = instance.ports?.peer || Number(instance.ports?.game || 7777) + 1;
@@ -156,12 +156,26 @@ function renderBackups() {
   }
 }
 
-function renderMapOptions(mapId) {
+function renderMapOptions(mapId, queryValue = "") {
   const select = $("mapSelect");
   const known = state.maps.some((map) => map.id === mapId);
-  select.innerHTML = state.maps.map((map) => (
-    `<option value="${escapeAttr(map.id)}">${escapeHtml(map.displayNameZh)}（${escapeHtml(map.englishName)} · ${escapeHtml(map.typeZh)}）</option>`
-  )).join("") + '<option value="__custom__">自定义地图启动名</option>';
+  const query = String(queryValue || "").trim().toLowerCase();
+  const maps = state.maps.filter((map) => {
+    const haystack = [
+      map.id,
+      map.displayNameZh,
+      map.englishName,
+      map.typeZh,
+      ...(map.aliasesZh || []),
+    ].join(" ").toLowerCase();
+    return !query || haystack.includes(query);
+  });
+  const selectedMap = state.maps.find((map) => map.id === mapId);
+  if (selectedMap && !maps.some((map) => map.id === selectedMap.id)) maps.unshift(selectedMap);
+  select.innerHTML = maps.map((map) => {
+    const aliases = map.aliasesZh?.length ? ` · 别名：${map.aliasesZh.join("、")}` : "";
+    return `<option value="${escapeAttr(map.id)}">${escapeHtml(map.displayNameZh)}（${escapeHtml(map.englishName)} · ${escapeHtml(map.typeZh)}${escapeHtml(aliases)}）</option>`;
+  }).join("") + '<option value="__custom__">自定义地图启动名</option>';
   select.value = known ? mapId : "__custom__";
   $("customMapLabel").classList.toggle("hidden", known);
   $("customMapInput").value = known ? "" : mapId;
@@ -423,6 +437,7 @@ $("mapSelect").onchange = () => {
   $("customMapLabel").classList.toggle("hidden", !custom);
   if (custom && !$("customMapInput").value.trim()) $("customMapInput").focus();
 };
+$("mapSearchInput").oninput = () => renderMapOptions(state.current?.map || "", $("mapSearchInput").value);
 $("saveSettingsBtn").onclick = async () => {
   state.settings = await api("/api/settings", {
     method: "PUT",
