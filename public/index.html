@@ -79,6 +79,7 @@
             <button data-tab="basic" class="active">基础配置</button>
             <button data-tab="ini">中文 INI 配置</button>
             <button data-tab="raw">原始 INI</button>
+            <button data-tab="backups">存档备份</button>
             <button data-tab="logs">运行日志</button>
           </nav>
 
@@ -172,10 +173,27 @@
                 <option>GameUserSettings.ini</option>
                 <option>Game.ini</option>
               </select>
-              <button id="loadRawBtn">导入 INI</button>
-              <button id="saveRawBtn" class="primary">导出 INI</button>
+              <button id="loadRawBtn">刷新显示</button>
+              <button id="saveRawBtn" class="primary">保存到 INI</button>
             </div>
+            <p id="rawIniPath" class="muted"></p>
+            <p id="rawIniHint" class="hint"></p>
             <textarea id="rawIniText" rows="22" spellcheck="false"></textarea>
+          </section>
+
+          <section id="tab-backups" class="tab-panel hidden">
+            <div class="section-head">
+              <div>
+                <h3>存档备份与恢复</h3>
+                <p class="muted">备份当前地图存档目录；恢复前会自动备份现有存档。恢复前请先停止实例。</p>
+              </div>
+              <div class="button-row">
+                <button id="refreshBackupsBtn">刷新备份</button>
+                <button id="createBackupBtn" class="primary">立即备份</button>
+              </div>
+            </div>
+            <p id="saveDirText" class="muted"></p>
+            <div id="backupList" class="backup-list"></div>
           </section>
 
           <section id="tab-logs" class="tab-panel hidden">

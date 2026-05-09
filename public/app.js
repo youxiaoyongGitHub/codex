@@ -8,6 +8,8 @@ const state = {
   configValues: {},
   customConfigs: [],
   connection: null,
+  backups: [],
+  saveDir: "",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -80,8 +82,14 @@ function renderInstances() {
 
 async function selectInstance(id) {
   state.current = await api(`/api/instances/${encodeURIComponent(id)}`);
-  const config = await api(`/api/instances/${encodeURIComponent(id)}/config`);
-  state.connection = await api(`/api/instances/${encodeURIComponent(id)}/connection`);
+  const [config, connection, backupData] = await Promise.all([
+    api(`/api/instances/${encodeURIComponent(id)}/config`),
+    api(`/api/instances/${encodeURIComponent(id)}/connection`),
+    api(`/api/instances/${encodeURIComponent(id)}/backups`),
+  ]);
+  state.connection = connection;
+  state.backups = backupData.backups || [];
+  state.saveDir = backupData.saveDir || "";
   state.configValues = { ...config.values };
   state.customConfigs = [...config.customConfigs];
   $("emptyState").classList.add("hidden");
@@ -89,7 +97,9 @@ async function selectInstance(id) {
   renderInstances();
   renderDetail();
   renderConnection();
+  renderBackups();
   renderConfig();
+  await loadRawIni(false);
 }
 
 function renderDetail() {
@@ -116,6 +126,34 @@ function renderConnection() {
   $("connectionAddress").value = info.address || "";
   $("connectionCommand").value = info.consoleCommand || "";
   $("steamConnectLink").href = info.steamConnectUrl || "#";
+}
+
+function renderBackups() {
+  $("saveDirText").textContent = `当前存档目录：${state.saveDir || "未安装或未生成"}`;
+  const root = $("backupList");
+  root.innerHTML = "";
+  if (!state.backups.length) {
+    root.innerHTML = '<p class="muted">暂无备份。服务器生成存档后，可以点击“立即备份”。</p>';
+    return;
+  }
+  for (const backup of state.backups) {
+    const card = document.createElement("article");
+    card.className = "backup-card";
+    card.innerHTML = `
+      <div>
+        <strong>${escapeHtml(formatDateTime(backup.createdAt) || backup.id)}</strong>
+        <div class="backup-meta">
+          <span class="pill">地图：${escapeHtml(backup.map || "未知")}</span>
+          <span class="pill">大小：${escapeHtml(formatBytes(backup.sizeBytes))}</span>
+          ${backup.note ? `<span class="pill">${escapeHtml(backup.note)}</span>` : ""}
+        </div>
+        <p class="muted">${escapeHtml(backup.id)}</p>
+      </div>
+      <button class="danger">恢复此备份</button>
+    `;
+    card.querySelector("button").onclick = () => restoreBackup(backup.id).catch((error) => toast(error.message));
+    root.appendChild(card);
+  }
 }
 
 function renderMapOptions(mapId) {
@@ -281,7 +319,46 @@ async function runAction(suffix, success) {
   if (["start", "restart"].includes(suffix) && state.current) {
     state.connection = await api(`/api/instances/${encodeURIComponent(state.current.id)}/connection`);
     renderConnection();
+    await loadRawIni(false);
   }
+}
+
+async function loadBackups() {
+  const data = await api(`/api/instances/${encodeURIComponent(state.current.id)}/backups`);
+  state.backups = data.backups || [];
+  state.saveDir = data.saveDir || "";
+  renderBackups();
+}
+
+async function createBackup() {
+  $("createBackupBtn").disabled = true;
+  try {
+    const backup = await api(`/api/instances/${encodeURIComponent(state.current.id)}/backups`, { method: "POST", body: "{}" });
+    toast(`存档备份已创建：${backup.id}`);
+    await loadBackups();
+  } finally {
+    $("createBackupBtn").disabled = false;
+  }
+}
+
+async function restoreBackup(backupId) {
+  if (!confirm("恢复会覆盖当前存档。面板会先自动备份当前存档，确认继续？")) return;
+  const result = await api(`/api/instances/${encodeURIComponent(state.current.id)}/backups/${encodeURIComponent(backupId)}/restore`, {
+    method: "POST",
+    body: "{}",
+  });
+  toast(`存档已恢复：${result.restoredFrom}`);
+  await loadBackups();
+}
+
+async function loadRawIni(showToast = true) {
+  if (!state.current) return;
+  const file = $("rawFileSelect").value;
+  const data = await api(`/api/instances/${encodeURIComponent(state.current.id)}/ini/${encodeURIComponent(file)}`);
+  $("rawIniPath").textContent = `文件路径：${data.path}`;
+  $("rawIniText").value = data.content;
+  $("rawIniHint").textContent = data.content ? "" : data.emptyMessage || "INI 文件为空或尚未生成。";
+  if (showToast) toast("INI 内容已刷新");
 }
 
 function formatValue(item, value) {
@@ -290,6 +367,22 @@ function formatValue(item, value) {
     return bool ? item.optionLabelsZh?.true || "开启" : item.optionLabelsZh?.false || "关闭";
   }
   return `${value ?? ""}${item.unitZh ? ` ${item.unitZh}` : ""}`;
+}
+
+function formatBytes(value) {
+  const size = Number(value);
+  if (!Number.isFinite(size) || size <= 0) return "未知";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("zh-CN", { hour12: false });
 }
 
 function escapeHtml(value) {
@@ -392,6 +485,8 @@ $("checkPortsBtn").onclick = async () => {
 };
 $("copyAddressBtn").onclick = () => copyText($("connectionAddress").value, "连接地址已复制");
 $("copyCommandBtn").onclick = () => copyText($("connectionCommand").value, "控制台命令已复制");
+$("refreshBackupsBtn").onclick = () => loadBackups().then(() => toast("备份列表已刷新")).catch((error) => toast(error.message));
+$("createBackupBtn").onclick = () => createBackup().catch((error) => toast(error.message));
 $("configSearch").oninput = renderConfig;
 $("resetDefaultsBtn").onclick = () => {
   state.configValues = Object.fromEntries(state.schema.map((item) => [item.key, item.defaultValue]));
@@ -430,11 +525,9 @@ $("confirmDeleteBtn").onclick = async () => {
   await loadAll();
 };
 $("loadRawBtn").onclick = async () => {
-  const file = $("rawFileSelect").value;
-  const data = await api(`/api/instances/${encodeURIComponent(state.current.id)}/ini/${encodeURIComponent(file)}`);
-  $("rawIniText").value = data.content;
-  toast("INI 已导入到编辑区");
+  await loadRawIni(true);
 };
+$("rawFileSelect").onchange = () => loadRawIni(true).catch((error) => toast(error.message));
 $("saveRawBtn").onclick = async () => {
   const file = $("rawFileSelect").value;
   await api(`/api/instances/${encodeURIComponent(state.current.id)}/ini/${encodeURIComponent(file)}`, {
@@ -442,6 +535,7 @@ $("saveRawBtn").onclick = async () => {
     body: JSON.stringify({ content: $("rawIniText").value }),
   });
   toast("原始 INI 已保存");
+  await loadRawIni(false);
 };
 $("loadLogsBtn").onclick = async () => {
   const data = await api(`/api/instances/${encodeURIComponent(state.current.id)}/logs`);

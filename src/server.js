@@ -18,6 +18,7 @@ import { CONFIG_CATEGORIES, CONFIG_SCHEMA, validateSchema } from "./config-schem
 import { configPath, readRawIni, syncIniFiles } from "./ini.js";
 import { ASA_MAPS } from "./maps.js";
 import { connectionInfoForInstance, ensureFirewallRules, getPortStatus, requiredPorts } from "./network.js";
+import { createSaveBackup, listSaveBackups, restoreSaveBackup, saveDirForInstance } from "./save-backups.js";
 import {
   installOrUpdateInstance,
   refreshRuntimeStates,
@@ -231,6 +232,27 @@ async function apiHandler(req, res, pathname) {
   if (req.method === "GET" && suffix === "/connection") {
     return sendJson(res, 200, connectionInfoForInstance(instance));
   }
+  if (req.method === "GET" && suffix === "/backups") {
+    const installDir = resolveInstallDir(appSettings, instance);
+    return sendJson(res, 200, {
+      saveDir: saveDirForInstance(instance, installDir),
+      backups: await listSaveBackups(instance),
+    });
+  }
+  if (req.method === "POST" && suffix === "/backups") {
+    const backup = await createSaveBackup(instance, resolveInstallDir(appSettings, instance));
+    return sendJson(res, 201, backup);
+  }
+  if (req.method === "POST" && suffix.startsWith("/backups/") && suffix.endsWith("/restore")) {
+    const runtime = await readRuntime();
+    const state = runtime.instances[instance.id];
+    if (state?.pid || state?.status === "运行中") {
+      throw Object.assign(new Error("恢复存档前请先停止实例"), { statusCode: 409 });
+    }
+    const backupId = decodeURIComponent(suffix.replace(/^\/backups\//, "").replace(/\/restore$/, ""));
+    const result = await restoreSaveBackup(instance, resolveInstallDir(appSettings, instance), backupId);
+    return sendJson(res, 200, result);
+  }
   if (req.method === "POST" && suffix === "/firewall") {
     return sendJson(res, 200, await ensureFirewallRules(instance));
   }
@@ -252,6 +274,7 @@ async function apiHandler(req, res, pathname) {
       file,
       path: configPath(resolveInstallDir(appSettings, instance), file),
       content: await readRawIni(resolveInstallDir(appSettings, instance), file),
+      emptyMessage: "如果文件为空，请先在“中文 INI 配置”中保存并同步 INI，或启动一次实例让面板自动写入配置。",
     });
   }
   if (req.method === "PUT" && suffix.startsWith("/ini/")) {
