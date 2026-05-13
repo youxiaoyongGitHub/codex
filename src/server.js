@@ -40,6 +40,7 @@ import {
   stopInstance,
 } from "./process-manager.js";
 import { findSteamcmd, installSteamcmd } from "./steamcmd.js";
+import { importSingleplayerInstance, singleplayerCandidates } from "./singleplayer-import.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.resolve(__dirname, "..", "public");
@@ -107,6 +108,7 @@ function sanitizeInstanceInput(input) {
     installDir: input.installDir,
     ports: input.ports,
     mods: Array.isArray(input.mods) ? input.mods : [],
+    modDetails: input.modDetails || {},
     launch: input.launch,
     clusterId: input.clusterId || "",
     config: input.config || {},
@@ -167,6 +169,16 @@ async function apiHandler(req, res, pathname) {
   }
   if (route(req.method, pathname, { method: "GET", regex: /^\/api\/maps$/ })) {
     return sendJson(res, 200, { maps: ASA_MAPS });
+  }
+  if (route(req.method, pathname, { method: "GET", regex: /^\/api\/imports\/singleplayer\/candidates$/ })) {
+    return sendJson(res, 200, { candidates: singleplayerCandidates() });
+  }
+  if (route(req.method, pathname, { method: "POST", regex: /^\/api\/imports\/singleplayer$/ })) {
+    const body = await readBody(req);
+    const result = await importSingleplayerInstance(appSettings, body, async (instance) => {
+      validateInstance(instance, await listInstances(), appSettings);
+    });
+    return sendJson(res, 201, result);
   }
   if (route(req.method, pathname, { method: "GET", regex: /^\/api\/clusters$/ })) {
     const runtime = await refreshRuntimeStates();

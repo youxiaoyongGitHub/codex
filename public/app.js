@@ -49,6 +49,7 @@ async function loadAll() {
   state.categories = schemaData.categories;
   state.maps = mapsData.maps;
   renderSettings();
+  renderImportMapOptions();
   renderInstances();
   try {
     const clustersData = await api("/api/clusters");
@@ -142,6 +143,7 @@ function renderDetail() {
   $("queryPortInput").value = instance.ports?.query || 27015;
   $("rconPortInput").value = instance.ports?.rcon || 27020;
   $("modsInput").value = (instance.mods || []).join("\n");
+  renderModDetails();
   $("extraArgsInput").value = instance.launch?.extraArgs || "";
 }
 
@@ -306,6 +308,47 @@ function renderMapOptions(mapId, queryValue = "") {
   $("customMapInput").value = known ? "" : mapId;
 }
 
+function renderImportMapOptions() {
+  const select = $("importMapSelect");
+  select.innerHTML = state.maps.map((map) => (
+    `<option value="${escapeAttr(map.id)}">${escapeHtml(map.displayNameZh)}（${escapeHtml(map.englishName)}）</option>`
+  )).join("");
+}
+
+function currentModIds() {
+  return $("modsInput").value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean);
+}
+
+function renderModDetails() {
+  const root = $("modDetailsList");
+  const ids = currentModIds();
+  root.innerHTML = "";
+  if (!ids.length) {
+    root.innerHTML = '<p class="muted">添加 Mod ID 后，可在这里填写中文显示名称。</p>';
+    return;
+  }
+  const details = state.current.modDetails || {};
+  for (const id of ids) {
+    const card = document.createElement("div");
+    card.className = "mod-detail-card";
+    card.innerHTML = `
+      <div>
+        <span class="muted">Mod ID</span>
+        <strong>${escapeHtml(id)}</strong>
+      </div>
+      <label>
+        <span>中文显示名称</span>
+        <input value="${escapeAttr(details[id]?.displayNameZh || "")}" placeholder="例如 自动门、叠加模组、恐龙扩展" />
+      </label>
+    `;
+    card.querySelector("input").oninput = (event) => {
+      state.current.modDetails = state.current.modDetails || {};
+      state.current.modDetails[id] = { displayNameZh: event.target.value.trim() };
+    };
+    root.appendChild(card);
+  }
+}
+
 function renderConfig() {
   const query = $("configSearch").value.trim().toLowerCase();
   const root = $("configGroups");
@@ -411,6 +454,12 @@ function renderCustomConfigs() {
 }
 
 function collectInstanceForm() {
+  const modIds = currentModIds();
+  const modDetails = {};
+  for (const id of modIds) {
+    const detail = state.current.modDetails?.[id];
+    if (detail?.displayNameZh) modDetails[id] = { displayNameZh: detail.displayNameZh };
+  }
   return {
     name: $("nameInput").value.trim(),
     map: $("mapSelect").value === "__custom__" ? $("customMapInput").value.trim() : $("mapSelect").value,
@@ -421,7 +470,8 @@ function collectInstanceForm() {
       query: Number($("queryPortInput").value),
       rcon: Number($("rconPortInput").value),
     },
-    mods: $("modsInput").value.split(/[\n,]/).map((item) => item.trim()).filter(Boolean),
+    mods: modIds,
+    modDetails,
     launch: {
       ...(state.current.launch || {}),
       extraArgs: $("extraArgsInput").value.trim(),
@@ -484,6 +534,36 @@ async function createCluster() {
   state.selectedClusterId = cluster.id;
   toast("集群已创建");
   await loadAll();
+}
+
+async function loadImportCandidates() {
+  const data = await api("/api/imports/singleplayer/candidates");
+  const saveDir = data.candidates?.saveDirs?.[0];
+  const configDir = data.candidates?.configDirs?.[0];
+  if (saveDir && !$("importSaveDirInput").value.trim()) $("importSaveDirInput").value = saveDir;
+  if (configDir && !$("importConfigDirInput").value.trim()) $("importConfigDirInput").value = configDir;
+  toast("已填入推荐路径，请根据实际单机目录确认");
+}
+
+async function importSingleplayer() {
+  $("importSingleplayerBtn").disabled = true;
+  try {
+    const result = await api("/api/imports/singleplayer", {
+      method: "POST",
+      body: JSON.stringify({
+        name: $("importNameInput").value.trim() || "单机导入服务器",
+        map: $("importMapSelect").value,
+        saveDir: $("importSaveDirInput").value.trim(),
+        configDir: $("importConfigDirInput").value.trim(),
+        installDir: $("importInstallDirInput").value.trim(),
+      }),
+    });
+    toast(`单机存档已导入：${result.instance.name}`);
+    await loadAll();
+    await selectInstance(result.instance.id);
+  } finally {
+    $("importSingleplayerBtn").disabled = false;
+  }
 }
 
 async function saveCluster() {
@@ -631,6 +711,9 @@ $("mapSelect").onchange = () => {
   if (custom && !$("customMapInput").value.trim()) $("customMapInput").focus();
 };
 $("mapSearchInput").oninput = () => renderMapOptions(state.current?.map || "", $("mapSearchInput").value);
+$("modsInput").oninput = renderModDetails;
+$("loadImportCandidatesBtn").onclick = () => loadImportCandidates().catch((error) => toast(error.message));
+$("importSingleplayerBtn").onclick = () => importSingleplayer().catch((error) => toast(error.message));
 $("saveSettingsBtn").onclick = async () => {
   state.settings = await api("/api/settings", {
     method: "PUT",

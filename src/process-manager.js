@@ -31,12 +31,20 @@ export function buildLaunchArgs(instance, cluster = null) {
   if (config.ServerAdminPassword) query.push(`ServerAdminPassword=${sanitizeLaunchValue(config.ServerAdminPassword)}`);
 
   const args = [`${map}?${query.join("?")}`];
-  if (instance.mods?.length) args.push(`-mods=${instance.mods.join(",")}`);
+  const modIds = normalizeModIds(instance.mods);
+  if (modIds.length) args.push(`-mods=${modIds.join(",")}`);
   if (instance.config?.RCONEnabled !== false) args.push("-RCONEnabled=True", `-RCONPort=${instance.ports?.rcon || instance.config?.RCONPort || 27020}`);
   if (cluster) args.push(`-clusterid=${cluster.arkClusterId}`, `-ClusterDirOverride=${cluster.clusterDir}`);
   if (instance.launch?.battleEye === false) args.push("-NoBattlEye");
   if (instance.launch?.extraArgs) args.push(...splitExtraArgs(instance.launch.extraArgs));
   return args;
+}
+
+export function normalizeModIds(mods = []) {
+  return mods
+    .map((mod) => (typeof mod === "object" ? mod.id : mod))
+    .map((mod) => String(mod || "").trim())
+    .filter(Boolean);
 }
 
 function sanitizeLaunchValue(value) {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLaunchArgs, buildSteamcmdInstallArgs, isProcessAlive, splitExtraArgs } from "../src/process-manager.js";
+import { buildLaunchArgs, buildSteamcmdInstallArgs, isProcessAlive, normalizeModIds, splitExtraArgs } from "../src/process-manager.js";
 
 test("启动参数包含地图、端口、Mod 和中文配置对应的原始值", () => {
   const args = buildLaunchArgs({
@@ -69,6 +69,10 @@ test("未加入集群时启动参数保持单实例行为", () => {
 
 test("额外启动参数支持带引号参数", () => {
   assert.deepEqual(splitExtraArgs('-foo "bar baz" -flag'), ["-foo", "bar baz", "-flag"]);
+});
+
+test("Mod 启动参数只使用原始 ID，中文显示名不影响启动", () => {
+  assert.deepEqual(normalizeModIds([{ id: "928501", displayNameZh: "中文模组" }, "123456"]), ["928501", "123456"]);
 });
 
 test("未设置地图时使用默认 ASA 地图启动名", () => {

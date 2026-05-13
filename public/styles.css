@@ -397,6 +397,23 @@ h3 {
   gap: 10px;
 }
 
+.mod-details-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mod-detail-card {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfdfc;
+}
+
 .backup-card,
 .cluster-member-card {
   display: grid;
@@ -449,6 +466,10 @@ h3 {
 
   .backup-card,
   .cluster-member-card {
+    grid-template-columns: 1fr;
+  }
+
+  .mod-detail-card {
     grid-template-columns: 1fr;
   }
 }

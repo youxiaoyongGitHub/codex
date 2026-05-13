@@ -51,6 +51,34 @@
           <h2>私服实例</h2>
           <div id="instanceList" class="instance-list"></div>
         </section>
+
+        <section class="panel">
+          <h2>单机导入</h2>
+          <label>
+            <span>新实例名称</span>
+            <input id="importNameInput" placeholder="例如 单机孤岛服务器" />
+          </label>
+          <label>
+            <span>地图</span>
+            <select id="importMapSelect"></select>
+          </label>
+          <label>
+            <span>单机存档目录</span>
+            <input id="importSaveDirInput" placeholder="选择 SavedArksLocal 下的地图目录" />
+          </label>
+          <label>
+            <span>单机配置目录（可选）</span>
+            <input id="importConfigDirInput" placeholder="包含 Game.ini / GameUserSettings.ini 的目录" />
+          </label>
+          <label>
+            <span>服务器安装目录（可选）</span>
+            <input id="importInstallDirInput" placeholder="留空自动生成" />
+          </label>
+          <div class="button-row">
+            <button id="loadImportCandidatesBtn">填入推荐路径</button>
+            <button id="importSingleplayerBtn" class="primary">导入为服务器实例</button>
+          </div>
+        </section>
       </aside>
 
       <section class="content">
@@ -124,6 +152,7 @@
               <span>Mod ID 列表</span>
               <textarea id="modsInput" rows="3" placeholder="每行一个 Mod ID，或使用逗号分隔"></textarea>
             </label>
+            <div id="modDetailsList" class="mod-details-list"></div>
             <label>
               <span>额外启动参数</span>
               <textarea id="extraArgsInput" rows="3" placeholder="例如 -NoTransferFromFiltering"></textarea>

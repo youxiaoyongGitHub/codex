@@ -112,6 +112,7 @@ export function defaultInstance(name = "新建方舟私服") {
     clusterId: "",
     config: {},
     customConfigs: [],
+    modDetails: {},
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
