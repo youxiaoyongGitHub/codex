@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildLaunchArgs, buildSteamcmdInstallArgs, isProcessAlive, normalizeModIds, splitExtraArgs } from "../src/process-manager.js";
+import { buildLaunchArgs, buildSteamcmdInstallArgs, isProcessAlive, normalizeModIds, normalizeServerCulture, splitExtraArgs } from "../src/process-manager.js";
 
 test("启动参数包含地图、端口、Mod 和中文配置对应的原始值", () => {
   const args = buildLaunchArgs({
@@ -20,7 +20,7 @@ test("启动参数包含地图、端口、Mod 和中文配置对应的原始值"
   assert.match(args[0], /Port=7777/);
   assert.match(args[0], /QueryPort=27015/);
   assert.ok(args.includes("-mods=928501,123456"));
-  assert.ok(args.includes("-culture=zh-Hans-CN"));
+  assert.ok(args.includes("-culture=zh"));
   assert.ok(args.includes("-NoBattlEye"));
   assert.ok(args.includes("-NoTransferFromFiltering"));
 });
@@ -86,6 +86,20 @@ test("服务器语言可关闭为服务端默认", () => {
     config: {},
   });
   assert.equal(args.some((item) => item.startsWith("-culture=")), false);
+});
+
+test("旧版简体中文语言值启动时兼容为 Mod 可识别的短码", () => {
+  assert.equal(normalizeServerCulture("zh-Hans-CN"), "zh");
+  const args = buildLaunchArgs({
+    name: "旧语言值测试",
+    map: "TheIsland_WP",
+    ports: { game: 7777, query: 27015, rcon: 27020 },
+    mods: [],
+    launch: { culture: "zh-Hans-CN" },
+    config: {},
+  });
+  assert.ok(args.includes("-culture=zh"));
+  assert.equal(args.includes("-culture=zh-Hans-CN"), false);
 });
 
 test("未设置地图时使用默认 ASA 地图启动名", () => {

@@ -35,7 +35,7 @@ export function buildLaunchArgs(instance, cluster = null) {
   if (modIds.length) args.push(`-mods=${modIds.join(",")}`);
   if (instance.config?.RCONEnabled !== false) args.push("-RCONEnabled=True", `-RCONPort=${instance.ports?.rcon || instance.config?.RCONPort || 27020}`);
   if (cluster) args.push(`-clusterid=${cluster.arkClusterId}`, `-ClusterDirOverride=${cluster.clusterDir}`);
-  const culture = instance.launch?.culture || "zh-Hans-CN";
+  const culture = normalizeServerCulture(instance.launch?.culture);
   if (culture !== "default") args.push(`-culture=${culture}`);
   if (instance.launch?.battleEye === false) args.push("-NoBattlEye");
   if (instance.launch?.extraArgs) args.push(...splitExtraArgs(instance.launch.extraArgs));
@@ -47,6 +47,13 @@ export function normalizeModIds(mods = []) {
     .map((mod) => (typeof mod === "object" ? mod.id : mod))
     .map((mod) => String(mod || "").trim())
     .filter(Boolean);
+}
+
+export function normalizeServerCulture(culture) {
+  const value = String(culture || "").trim();
+  if (!value) return "zh";
+  if (["zh-Hans-CN", "zh-CN", "zh-Hans"].includes(value)) return "zh";
+  return value;
 }
 
 function sanitizeLaunchValue(value) {

@@ -39,7 +39,7 @@ export async function importSingleplayerInstance(appSettings, input = {}, valida
     ...defaultInstance(input.name || "单机导入服务器"),
     map,
     installDir: input.installDir || "",
-    launch: { battleEye: false, culture: "zh-Hans-CN", extraArgs: "" },
+    launch: { battleEye: false, culture: "zh", extraArgs: "" },
   };
   instance.installDir = instance.installDir || resolveInstallDir(appSettings, instance);
   const installDir = resolveInstallDir(appSettings, instance);

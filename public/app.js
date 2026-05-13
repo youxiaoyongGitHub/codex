@@ -142,7 +142,8 @@ function renderDetail() {
   $("peerPortInput").value = instance.ports?.peer || Number(instance.ports?.game || 7777) + 1;
   $("queryPortInput").value = instance.ports?.query || 27015;
   $("rconPortInput").value = instance.ports?.rcon || 27020;
-  $("cultureSelect").value = instance.launch?.culture || "zh-Hans-CN";
+  $("cultureSelect").value = instance.launch?.culture || "zh";
+  if (!$("cultureSelect").value) $("cultureSelect").value = "zh";
   $("modsInput").value = (instance.mods || []).join("\n");
   renderModDetails();
   $("extraArgsInput").value = instance.launch?.extraArgs || "";
