@@ -20,6 +20,7 @@ test("启动参数包含地图、端口、Mod 和中文配置对应的原始值"
   assert.match(args[0], /Port=7777/);
   assert.match(args[0], /QueryPort=27015/);
   assert.ok(args.includes("-mods=928501,123456"));
+  assert.ok(args.includes("-culture=zh-Hans-CN"));
   assert.ok(args.includes("-NoBattlEye"));
   assert.ok(args.includes("-NoTransferFromFiltering"));
 });
@@ -73,6 +74,18 @@ test("额外启动参数支持带引号参数", () => {
 
 test("Mod 启动参数只使用原始 ID，中文显示名不影响启动", () => {
   assert.deepEqual(normalizeModIds([{ id: "928501", displayNameZh: "中文模组" }, "123456"]), ["928501", "123456"]);
+});
+
+test("服务器语言可关闭为服务端默认", () => {
+  const args = buildLaunchArgs({
+    name: "默认语言测试",
+    map: "TheIsland_WP",
+    ports: { game: 7777, query: 27015, rcon: 27020 },
+    mods: [],
+    launch: { culture: "default" },
+    config: {},
+  });
+  assert.equal(args.some((item) => item.startsWith("-culture=")), false);
 });
 
 test("未设置地图时使用默认 ASA 地图启动名", () => {

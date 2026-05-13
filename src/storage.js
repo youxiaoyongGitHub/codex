@@ -107,6 +107,7 @@ export function defaultInstance(name = "新建方舟私服") {
     mods: [],
     launch: {
       battleEye: true,
+      culture: "zh-Hans-CN",
       extraArgs: "",
     },
     clusterId: "",

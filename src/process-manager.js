@@ -35,6 +35,8 @@ export function buildLaunchArgs(instance, cluster = null) {
   if (modIds.length) args.push(`-mods=${modIds.join(",")}`);
   if (instance.config?.RCONEnabled !== false) args.push("-RCONEnabled=True", `-RCONPort=${instance.ports?.rcon || instance.config?.RCONPort || 27020}`);
   if (cluster) args.push(`-clusterid=${cluster.arkClusterId}`, `-ClusterDirOverride=${cluster.clusterDir}`);
+  const culture = instance.launch?.culture || "zh-Hans-CN";
+  if (culture !== "default") args.push(`-culture=${culture}`);
   if (instance.launch?.battleEye === false) args.push("-NoBattlEye");
   if (instance.launch?.extraArgs) args.push(...splitExtraArgs(instance.launch.extraArgs));
   return args;
